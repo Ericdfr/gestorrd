@@ -1073,6 +1073,13 @@ function rnB(){
         '<div class="lm">'+b.p+' · '+b.tp+'</div></div>'+
         '<div style="text-align:right"><div class="la neu">'+fmt(b.bal,b.mon)+'</div>'+
         '<div style="font-size:11px;color:#d4b896;margin-top:3px">Ver ›</div></div></div>';
+    }else{
+      // Regular bank account
+      return '<div class="li" onclick="showDetail(\'b\','+ri+')" style="cursor:pointer">'+
+        '<div><div class="ln">🏦 '+(b.bn||'')+(b.cta?' ••••'+b.cta:'')+'</div>'+
+        '<div class="lm">'+b.p+' · '+(b.tp||'Cuenta')+'</div></div>'+
+        '<div style="text-align:right"><div class="la neu">'+fmt(b.bal,b.mon)+'</div>'+
+        '<div style="font-size:11px;color:#d4b896;margin-top:3px">Ver ›</div></div></div>';
     }
   }).join('');
 }
