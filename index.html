@@ -837,9 +837,11 @@ if ('serviceWorker' in navigator) {
       <div class="admin-grid">
         <div class="admin-kpi"><div class="k">USUARIOS</div><div class="v" id="admin-users">0</div></div>
         <div class="admin-kpi"><div class="k">RESPALDOS</div><div class="v" id="admin-backups">0</div></div>
+        <div class="admin-kpi"><div class="k">SUGERENCIAS</div><div class="v" id="admin-sugs">0</div></div>
       </div>
       <button class="btn" onclick="loadAdminPanel()" style="margin-top:10px">Actualizar panel</button>
     </div>
+    <div class="card"><div class="ct">💬 Sugerencias de usuarios</div><div class="admin-table" id="admin-sug-list">Inicia sesión como dueño para ver datos.</div></div>
     <div class="card"><div class="ct">📋 Usuarios registrados</div><div class="admin-table" id="admin-list">Inicia sesión como dueño para ver datos.</div></div>
   </div>
 
@@ -1161,8 +1163,34 @@ function rnAh(){var el=document.getElementById('ahList');if(!D.a.length){el.inne
 function addBud(){var cat=document.getElementById('bc').value;var lim=Number(document.getElementById('bl').value);if(!lim){toast('Ingresa el limite');return;}D.bud[cat]=lim;document.getElementById('bl').value='';rnBud();saveD();toast('Presupuesto guardado ✓');}
 function rnBud(){var ym=vY+'-'+String(vM+1).padStart(2,'0');var el=document.getElementById('budList'),al=document.getElementById('budAlerts');if(!Object.keys(D.bud).length){el.innerHTML='<div class="empty">Sin presupuestos definidos</div>';al.innerHTML='<div style="font-size:12px;color:#444444;text-align:center;padding:12px">Sin alertas activas</div>';return;}var ah='';el.innerHTML=Object.entries(D.bud).map(function(e){var cat=e[0],lim=e[1];var gast=D.g.filter(function(g){return g.cat===cat&&g.f&&g.f.startsWith(ym);}).reduce(function(s,g){return s+g.mo;},0);var pct=lim>0?Math.min(100,Math.round(gast/lim*100)):0;var ov=gast>lim,nr=!ov&&pct>=80;var fc=ov?'d':nr?'w':'';var col=ov?'#c0524a':nr?'#b88a3a':'#4d9e6e';if(ov)ah+='<div class="abox aerr">⛔ Excedido: '+cat+' — '+fmt(gast)+' / '+fmt(lim)+'</div>';else if(nr)ah+='<div class="abox">🔔 Casi al limite: '+cat+' — '+pct+'% usado</div>';return'<div style="background:#111111;border:1px solid #2a2a2a;border-radius:12px;padding:12px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><div style="font-size:13px;font-weight:600;color:#e8e8e8">'+cat+'</div><div style="font-size:12px;color:#555555">Limite: '+fmt(lim)+'</div></div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:11px;color:#555555">Gastado: <span style="font-weight:700;color:'+col+'">'+fmt(gast)+'</span></span><span style="font-size:12px;font-weight:700;color:'+col+'">'+pct+'%</span></div><div class="pb"><div class="pf '+fc+'" style="width:'+pct+'%"></div></div></div>';}).join('');al.innerHTML=ah||'<div style="font-size:12px;color:#4d9e6e;text-align:center;padding:12px">✅ Todos los presupuestos en control</div>';}
 function calcL(){var P=Number(document.getElementById('cm').value)||0;var an=Number(document.getElementById('ct').value)||0;var n=parseInt(document.getElementById('cme').value)||0;var cur=document.getElementById('cmon').value;if(!P||!an||!n){document.getElementById('crc').style.display='none';return;}var r=an/100/12;var cu=r>0?P*(r*Math.pow(1+r,n))/(Math.pow(1+r,n)-1):P/n;var tot=cu*n;var int=tot-P;document.getElementById('cc').textContent=fmt(cu,cur);document.getElementById('ctot').textContent=fmt(tot,cur);document.getElementById('cint').textContent=fmt(int,cur);document.getElementById('cpri').textContent=fmt(P,cur);document.getElementById('crc').style.display='block';var rows=[],bal=P,mx=Math.min(n,60);for(var i=1;i<=mx;i++){var iv=bal*r;var cp=cu-iv;bal=Math.max(0,bal-cp);rows.push({m:i,c:cu,iv:iv,b:bal});}document.getElementById('cat').innerHTML='<div class="ar h"><span>Mes</span><span>Cuota</span><span>Interes</span><span>Balance</span></div>'+rows.map(function(r){return'<div class="ar"><span>'+r.m+'</span><span>'+fmt(r.c,cur)+'</span><span style="color:#d07070">'+fmt(r.iv,cur)+'</span><span>'+fmt(r.b,cur)+'</span></div>';}).join('');}
-function setStar(n){document.querySelectorAll('#stars .star').forEach(function(s,i){s.classList.toggle('on',i<n);});}
-function sendSug(){var t=document.getElementById('stxt').value.trim();if(!t){toast('Escribe tu sugerencia');return;}document.getElementById('ssent').style.display='block';document.getElementById('stxt').value='';document.getElementById('seml').value='';setStar(0);setTimeout(function(){document.getElementById('ssent').style.display='none';},3500);toast('Sugerencia enviada ✓');}
+var curStar=0;
+function setStar(n){curStar=n;document.querySelectorAll('#stars .star').forEach(function(s,i){s.classList.toggle('on',i<n);});}
+async function sendSug(){
+  var t=document.getElementById('stxt').value.trim();
+  if(!t){toast('Escribe tu sugerencia');return;}
+  var email=document.getElementById('seml').value.trim()||(currentUser?currentUser.email:null);
+  var temas=Array.prototype.slice.call(document.querySelectorAll('.chip.sel')).map(function(c){return c.textContent;}).join(', ');
+  var btn=event&&event.target; if(btn)btn.disabled=true;
+  try{
+    if(sb){
+      await sb.from('sugerencias').insert({
+        user_id: currentUser?currentUser.id:null,
+        email: email,
+        estrellas: curStar||null,
+        temas: temas||null,
+        mensaje: t
+      });
+    }
+  }catch(e){ /* aún mostramos gracias aunque falle el envío */ }
+  if(btn)btn.disabled=false;
+  document.getElementById('ssent').style.display='block';
+  document.getElementById('stxt').value='';
+  document.getElementById('seml').value='';
+  document.querySelectorAll('.chip.sel').forEach(function(c){c.classList.remove('sel');});
+  setStar(0);
+  setTimeout(function(){document.getElementById('ssent').style.display='none';},3500);
+  toast('Sugerencia enviada ✓');
+}
 function updD(){var ym=vY+'-'+String(vM+1).padStart(2,'0');var gf=D.g.filter(function(g){return g.f&&g.f.startsWith(ym);});var inf=D.i.filter(function(i){return i.f&&i.f.startsWith(ym);});var tI=inf.reduce(function(s,i){return s+i.mo;},0),tG=gf.reduce(function(s,g){return s+g.mo;},0);var tB=D.b.reduce(function(s,b){return s+b.bal;},0);document.getElementById('dI').textContent=fmt(tI);document.getElementById('dG').textContent=fmt(tG);document.getElementById('dD').textContent=fmt(tI-tG);document.getElementById('patr').textContent=fmt(tB);var lbl=MES[vM]+' '+vY;document.getElementById('mnl').textContent=lbl;document.getElementById('top-month').textContent=lbl;bldCh(gf,inf);var ah=ccAlerts();D.d.forEach(function(x){if(!x.f||x.estado==='Pagado')return;var d=du(x.f);if(d!==null&&d<0)ah+='<div class="abox aerr">⛔ VENCIDO · '+x.nom+' ('+x.f+')</div>';else if(d!==null&&d<=7)ah+='<div class="abox">🔔 '+x.nom+': '+(d===0?'HOY':d===1?'manana':'en '+d+' dias')+' ('+x.f+')</div>';});document.getElementById('dash-alerts').innerHTML=ah;var elB=document.getElementById('d-ban');if(!D.b.length)elB.innerHTML='<div class="empty">Sin cuentas</div>';else{var tU=D.b.filter(function(b){return b.mon==='USD';}).reduce(function(s,b){return s+b.bal;},0);var tDO=D.b.filter(function(b){return b.mon==='DOP';}).reduce(function(s,b){return s+b.bal;},0);elB.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px"><div style="background:#0e1e12;border:1px solid #1a3a22;border-radius:10px;padding:9px 11px"><div style="font-size:11px;color:#6dbe8e;font-weight:700;margin-bottom:3px">Total USD</div><div style="font-size:16px;font-weight:700;color:#4d9e6e">'+fmt(tU,'USD')+'</div></div><div style="background:#0e141e;border:1px solid #1a2e40;border-radius:10px;padding:9px 11px"><div style="font-size:11px;color:#6a9ab8;font-weight:700;margin-bottom:3px">Total DOP</div><div style="font-size:16px;font-weight:700;color:#5a80a0">'+fmt(tDO,'DOP')+'</div></div></div>'+D.b.map(function(b){return'<div class="ddc"><div><div class="dn">'+b.bn+(b.cta?' ••••'+b.cta:'')+'</div><div class="dm">'+b.p+' · '+b.tp+'</div></div><div class="dbal neu">'+fmt(b.bal,b.mon)+' <span style="font-size:11px;color:#444444">'+b.mon+'</span></div></div>';}).join('');}var act=D.d.filter(function(x){return x.estado==='Activo'||x.estado==='Atrasado';});var elA=document.getElementById('d-deu');if(!act.length)elA.innerHTML='<div class="empty">Sin deudas activas</div>';else elA.innerHTML=act.map(function(x){var cls=x.estado==='Atrasado'?'b-atr':'b-act';var val=x.tipo==='Tarjeta Credito'?fmt(x.sal||0,x.mon):x.tipo==='Prestamo'?fmt(x.mp||0,x.mon):x.tipo==='Personal'?fmt(x.mo||0,x.mon):fmt(x.bal||0,x.mon);var d=x.f?du(x.f):null;var ds=d!==null?(d<=0?'⛔':d<=7?'🔔':''):'';return'<div class="ddc"><div><div class="dn">'+x.nom+'</div><div class="dm">'+x.tipo+(ds?' '+ds:'')+'</div></div><div style="text-align:right"><div class="dbal neg">'+val+'</div><span class="badge '+cls+'">'+x.estado+'</span></div></div>';}).join('');var tcs=D.d.filter(function(x){return x.tipo==='Tarjeta Credito';});var elT=document.getElementById('d-tc');if(!tcs.length)elT.innerHTML='<div class="empty">Sin tarjetas</div>';
   else elT.innerHTML=tcs.map(function(x){
     var days=x.f?du(x.f):null;
@@ -2423,17 +2451,34 @@ async function restoreCloudBackup(){
   }catch(e){}
 }
 async function loadAdminPanel(){
-  if(!currentUser || currentUser.email!==OWNER_EMAIL){var l=document.getElementById('admin-list'); if(l)l.textContent='Solo el dueño puede ver este panel.'; return;}
+  if(!currentUser || currentUser.email!==OWNER_EMAIL){var l=document.getElementById('admin-list'); if(l)l.textContent='Solo el dueño puede ver este panel.'; var ls=document.getElementById('admin-sug-list'); if(ls)ls.textContent='Solo el dueño puede ver este panel.'; return;}
   try{
     var pr=await sb.from('profiles').select('email,created_at,last_login_at,app_version').order('created_at',{ascending:false}).limit(200);
     var br=await sb.from('app_backups').select('email,records_count,updated_at').order('updated_at',{ascending:false}).limit(200);
-    var users=(pr.data||[]), backs=(br.data||[]);
+    var sr=await sb.from('sugerencias').select('email,estrellas,temas,mensaje,created_at').order('created_at',{ascending:false}).limit(200);
+    var users=(pr.data||[]), backs=(br.data||[]), sugs=(sr.data||[]);
     document.getElementById('admin-users').textContent=users.length;
     document.getElementById('admin-backups').textContent=backs.length;
+    document.getElementById('admin-sugs').textContent=sugs.length;
     var byEmail={}; backs.forEach(function(b){byEmail[b.email]=b;});
     var html='<table><thead><tr><th>Email</th><th>Creado</th><th>Último login</th><th>Registros</th><th>Último respaldo</th></tr></thead><tbody>';
     users.forEach(function(u){var b=byEmail[u.email]||{};html+='<tr><td>'+esc(u.email||'')+'</td><td>'+fmtDate(u.created_at)+'</td><td>'+fmtDate(u.last_login_at)+'</td><td>'+(b.records_count||0)+'</td><td>'+fmtDate(b.updated_at)+'</td></tr>';});
     html+='</tbody></table>'; document.getElementById('admin-list').innerHTML=html;
+    if(!sugs.length){document.getElementById('admin-sug-list').innerHTML='<div class="empty">Sin sugerencias todavía</div>';}
+    else{
+      document.getElementById('admin-sug-list').innerHTML=sugs.map(function(s){
+        var stars=s.estrellas?('⭐'.repeat(s.estrellas)):'';
+        return '<div style="border-bottom:1px solid var(--border);padding:9px 0">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
+            '<div style="font-size:12px;font-weight:700;color:var(--text)">'+esc(s.email||'Anónimo')+'</div>'+
+            '<div style="font-size:11px;color:var(--text3)">'+fmtDate(s.created_at)+'</div>'+
+          '</div>'+
+          (stars?'<div style="font-size:12px;margin-bottom:3px">'+stars+'</div>':'')+
+          (s.temas?'<div style="font-size:11px;color:var(--acc);margin-bottom:3px">'+esc(s.temas)+'</div>':'')+
+          '<div style="font-size:13px;color:var(--text2)">'+esc(s.mensaje)+'</div>'+
+        '</div>';
+      }).join('');
+    }
   }catch(e){document.getElementById('admin-list').textContent='Error cargando admin: '+e.message;}
 }
 function esc(x){return String(x||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
