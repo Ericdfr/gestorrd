@@ -1548,8 +1548,17 @@ function g(id){var el=document.getElementById('ed-'+id);return el?el.value:null;
 function saveEdit(type,idx){
   if(type==='i'){
     var x=D.i[idx];
+    var oldMo=x.mo, oldMon=x.mon;
     x.f=g('f')||x.f; x.fu=g('fu')||x.fu; x.mon=g('mon')||x.mon;
     x.mo=Number(g('mo'))||x.mo; x.mt=g('mt')||x.mt; x.d=g('d')||'';
+    // Si este ingreso se movió a una cuenta, ajustar el saldo por la diferencia
+    if(x.movidoIdx!==undefined && D.b[x.movidoIdx] && !D.b[x.movidoIdx].esTarjeta){
+      var bco=D.b[x.movidoIdx];
+      var oldConv=oldMon===bco.mon?oldMo:conv(oldMo,oldMon,bco.mon);
+      var newConv=x.mon===bco.mon?x.mo:conv(x.mo,x.mon,bco.mon);
+      bco.bal=Math.round((bco.bal-oldConv+newConv)*100)/100;
+      rnB();
+    }
     rnI();
   } else if(type==='g'){
     var x=D.g[idx];
@@ -1587,13 +1596,21 @@ function saveEdit(type,idx){
 
 function deleteItem(type,idx){
   if(!confirm('¿Eliminar este registro?'))return;
-  if(type==='i') D.i.splice(idx,1);
+  if(type==='i'){
+    var xi=D.i[idx];
+    if(xi.movidoIdx!==undefined && D.b[xi.movidoIdx] && !D.b[xi.movidoIdx].esTarjeta){
+      var bcoi=D.b[xi.movidoIdx];
+      var convAmt=xi.mon===bcoi.mon?xi.mo:conv(xi.mo,xi.mon,bcoi.mon);
+      bcoi.bal=Math.round((bcoi.bal-convAmt)*100)/100;
+    }
+    D.i.splice(idx,1);
+  }
   else if(type==='g') D.g.splice(idx,1);
   else if(type==='d') D.d.splice(idx,1);
   else if(type==='b') D.b.splice(idx,1);
   else if(type==='a') D.a.splice(idx,1);
   saveD(); updD();
-  if(type==='i')rnI();
+  if(type==='i'){rnI();rnB();}
   else if(type==='g'){rnG();rnBud();}
   else if(type==='d'){rnD();updMov();}
   else if(type==='b'){rnB();updMov();}
