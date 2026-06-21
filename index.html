@@ -305,7 +305,7 @@ canvas{max-width:100%;display:block;margin:0 auto}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script>
-if ('serviceWorker' in navigator) {
+if (false && 'serviceWorker' in navigator) {
   window.addEventListener('load', function() {
     navigator.serviceWorker.register('./sw.js').catch(function(err){ console.log('SW error', err); });
   });
@@ -381,6 +381,7 @@ if ('serviceWorker' in navigator) {
   <button style="margin-top:18px;background:none;border:none;color:var(--text3);font-size:13px;cursor:pointer;font-weight:600;padding:10px" onclick="skipPin()" id="pskip">Omitir por ahora</button>
 </div>
 
+<div id="reset-screen" style="display:none;position:absolute;inset:0;background:var(--bg);z-index:500;flex-direction:column;align-items:center;justify-content:center;padding:24px"><div style="width:100%;max-width:360px"><div style="text-align:center;margin-bottom:24px"><div style="font-size:48px">🔐</div><div style="font-size:20px;font-weight:800;color:var(--text)">Nueva contraseña</div></div><div id="reset-error" style="display:none;background:var(--neg-bg);border:1px solid var(--neg-bdr);border-radius:10px;padding:12px;margin-bottom:12px;font-size:13px;color:var(--neg);text-align:center"></div><div style="margin-bottom:12px"><label style="font-size:12px;color:var(--text2);font-weight:600;display:block;margin-bottom:5px">Nueva contraseña</label><input type="password" id="reset-pwd1" placeholder="Mínimo 6 caracteres" style="width:100%;padding:12px;border:1px solid var(--border2);border-radius:10px;font-size:15px;background:var(--input-bg);color:var(--text);font-family:inherit"></div><div style="margin-bottom:16px"><label style="font-size:12px;color:var(--text2);font-weight:600;display:block;margin-bottom:5px">Confirmar</label><input type="password" id="reset-pwd2" placeholder="Repite la contraseña" style="width:100%;padding:12px;border:1px solid var(--border2);border-radius:10px;font-size:15px;background:var(--input-bg);color:var(--text);font-family:inherit"></div><button onclick="doResetPassword()" id="reset-btn" style="width:100%;padding:14px;background:var(--btn-bg);color:white;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer">💾 Guardar nueva contraseña</button><div id="reset-msg" style="font-size:13px;font-weight:600;text-align:center;margin-top:10px;min-height:18px"></div><div style="text-align:center;margin-top:16px"><button onclick="history.replaceState(null,'',window.location.pathname);location.reload()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer">← Volver al inicio</button></div></div></div>
 <div id="tour-overlay">
   <div class="tour-card">
     <div class="tour-icon" id="tico">💰</div>
@@ -686,6 +687,7 @@ if ('serviceWorker' in navigator) {
       <div class="srow"><div><div class="slbl">🔔 Alertas de vencimiento</div><div class="ssub">Avisos 7 dias antes del pago</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
       <div class="srow"><div><div class="slbl">📊 Alertas de presupuesto</div><div class="ssub">Aviso al llegar al 80% del limite</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
     </div>
+    <div class="card" id="card-change-pwd" style="display:none"><div class="ct">🔑 Cambiar contraseña</div><div class="f"><label>Nueva contraseña</label><input type="password" id="chpwd-1" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div><div class="f"><label>Confirmar</label><input type="password" id="chpwd-2" autocomplete="new-password"></div><div id="chpwd-msg" style="font-size:13px;font-weight:600;text-align:center;min-height:18px;margin-bottom:8px"></div><button class="btn" onclick="changeAccountPassword()">💾 Guardar contraseña</button></div>
     <div class="card"><div class="ct">🔐 Cambiar PIN</div>
       <div class="f"><label>Nuevo PIN (4 digitos)</label><input type="password" id="npin" maxlength="4" placeholder="••••" inputmode="numeric"></div>
       <button class="btn" onclick="chPin()">Guardar nuevo PIN</button>
@@ -768,52 +770,22 @@ if ('serviceWorker' in navigator) {
 
   </div>
 
-  <div id="tab-novedades" class="sec">
-    <div class="card" style="text-align:center;padding:14px 12px">
-      <div style="font-size:32px;margin-bottom:8px">🆕</div>
-      <div style="font-size:16px;font-weight:800;color:var(--text)">Novedades GestorRD</div>
-      <div style="font-size:11px;color:var(--text3);margin-top:4px">Historial de actualizaciones</div>
-    </div>
-
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-size:14px;font-weight:800;color:var(--acc)">Versión 3.0</div>
-        <div style="font-size:11px;color:var(--text3);background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:3px 9px">Jun 2026</div>
-      </div>
-      <div class="nov-item">💾 <strong>Respaldo automático cada 24h</strong> — Tus datos se guardan automáticamente en un archivo que puedes guardar en iCloud Drive.</div>
-      <div class="nov-item">📤 <strong>Restaurar datos</strong> — Si eliminas la app puedes recuperar todos tus datos importando el archivo de respaldo.</div>
-      <div class="nov-item">🆕 <strong>Sección de novedades</strong> — Ahora puedes ver aquí cada actualización y sus nuevas funciones.</div>
-      <div class="nov-item">💳 <strong>Pagar deuda sin cuenta</strong> — Ya puedes registrar pagos de deuda aunque no tengas cuentas de banco agregadas.</div>
-    </div>
-
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-size:14px;font-weight:800;color:var(--text2)">Versión 2.0</div>
-        <div style="font-size:11px;color:var(--text3);background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:3px 9px">Jun 2026</div>
-      </div>
-      <div class="nov-item">💳 <strong>Tarjetas de crédito</strong> — Agrega tarjetas con límite en USD y DOP, fecha de corte y fecha límite de pago.</div>
-      <div class="nov-item">🏦 <strong>Ingreso auto a cuenta</strong> — Al registrar un ingreso se mueve automáticamente a la cuenta de banco que elijas.</div>
-      <div class="nov-item">💸 <strong>Gasto deduce de cuenta</strong> — Al pagar con tarjeta o débito el saldo disponible se descuenta solo.</div>
-      <div class="nov-item">✏️ <strong>Editar y eliminar</strong> — Toca cualquier registro para ver el detalle, editarlo o eliminarlo.</div>
-      <div class="nov-item">💰 <strong>Pagar deuda desde cuenta</strong> — Registra pagos de deuda y se descuenta automáticamente de tu cuenta.</div>
-      <div class="nov-item">📊 <strong>Historial de pagos en deudas</strong> — Cada deuda guarda el historial de todos los pagos realizados.</div>
-    </div>
-
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-size:14px;font-weight:800;color:var(--text3)">Versión 1.0</div>
-        <div style="font-size:11px;color:var(--text3);background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:3px 9px">Jun 2025</div>
-      </div>
-      <div class="nov-item">🚀 <strong>Lanzamiento de GestorRD</strong> — Dashboard financiero con ingresos, gastos, deudas, bancos y ahorros.</div>
-      <div class="nov-item">🌎 <strong>Bilingüe</strong> — Soporte completo en Español e Inglés.</div>
-      <div class="nov-item">🔐 <strong>PIN de seguridad</strong> — Protege el acceso a tu información financiera.</div>
-      <div class="nov-item">📊 <strong>Presupuesto mensual</strong> — Define límites por categoría con alertas automáticas.</div>
-      <div class="nov-item">🧮 <strong>Calculadora de préstamos</strong> — Tabla de amortización completa.</div>
-      <div class="nov-item">💱 <strong>Conversión USD ↔ DOP</strong> — Tasa de cambio actualizable en tiempo real.</div>
+  <div <div id="tab-novedades" class="sec">
+  <div class="card">
+    <div class="ct">🆕 Novedades v3.0 — Junio 2026</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
+      <div style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:10px 12px"><div style="font-size:12px;font-weight:800;color:var(--acc);margin-bottom:3px">🏷️ Nuevo logo y paleta</div><div style="font-size:12px;color:var(--text2)">Logo profesional. Paleta azul marino → verde esmeralda basada en el logo.</div></div>
+      <div style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:10px 12px"><div style="font-size:12px;font-weight:800;color:var(--acc);margin-bottom:3px">🎨 Temas claro y oscuro</div><div style="font-size:12px;color:var(--text2)">Sigue el modo de tu iPhone automáticamente. Fórzalo en ⚙️ Ajustes → Tema.</div></div>
+      <div style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:10px 12px"><div style="font-size:12px;font-weight:800;color:var(--acc);margin-bottom:3px">🌎 Modo Regional</div><div style="font-size:12px;color:var(--text2)">Solo RD 🇩🇴, Solo USA 🇺🇸 o Ambos 🌎. Ajusta moneda por defecto.</div></div>
+      <div style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:10px 12px"><div style="font-size:12px;font-weight:800;color:var(--acc);margin-bottom:3px">☰ Navegación rediseñada</div><div style="font-size:12px;color:var(--text2)">Barra fija abajo. Lo demás en ☰ Más.</div></div>
+      <div style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:10px 12px"><div style="font-size:12px;font-weight:800;color:var(--acc);margin-bottom:3px">📄 Exportar PDF</div><div style="font-size:12px;color:var(--text2)">Exporta tu resumen anual desde ☰ Más → Resumen Anual → 📄 PDF.</div></div>
+      <div style="background:var(--pos-bg);border:1px solid var(--pos-bdr);border-radius:10px;padding:10px 12px"><div style="font-size:12px;font-weight:800;color:var(--pos);margin-bottom:3px">🔐 Magic Link + cambiar contraseña</div><div style="font-size:12px;color:var(--text2)">Recupera acceso por email. Cambia tu contraseña desde ⚙️ Ajustes.</div></div>
+      <div style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:10px 12px"><div style="font-size:12px;font-weight:800;color:var(--acc);margin-bottom:3px">🧺 Lavandería + categorías completas</div><div style="font-size:12px;color:var(--text2)">Nueva categoría. El modal de edición muestra todas las categorías.</div></div>
+      <div style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:10px 12px"><div style="font-size:12px;font-weight:800;color:var(--acc);margin-bottom:3px">☁️ Respaldo automático</div><div style="font-size:12px;color:var(--text2)">Cada 24h. Cloud backup con Supabase para usuarios con cuenta.</div></div>
     </div>
   </div>
-
-  <div id="tab-sugerencias" class="sec">
+</div>
+<div id="tab-sugerencias" class="sec">
     <div class="card" style="text-align:center;padding:16px">
       <svg width="50" height="50" viewBox="0 0 90 90" style="margin:0 auto 10px"><path d="M45 6 L78 20 L78 50 C78 68 45 84 45 84 C45 84 12 68 12 50 L12 20 Z" fill="url(#lg1)"/><text x="45" y="54" text-anchor="middle" font-size="28" font-weight="900" fill="#5dae80" font-family="-apple-system">$</text></svg>
       <div style="font-size:17px;font-weight:800;color:var(--text)">GestorRD</div>
@@ -1283,7 +1255,7 @@ function checkRateUpdate(){
 }
 
 // ── Categorías base (debe existir antes del auto-start) ──
-var BASE_CATS = ['🏠 Vivienda/Alquiler', '💡 Electricidad', '💧 Agua', '🔥 Gas', '📡 Internet/Cable', '🛋️ Muebles/Hogar', '🔧 Reparaciones', '🚗 Gasolina', '🚌 Transporte público', '🚕 Taxi/Uber', '✈️ Viajes/Vuelos', '🔩 Mecánico/Auto', '🍔 Comida rápida', '🛒 Supermercado', '🍽️ Restaurantes', '☕ Café/Bebidas', '💊 Farmacia', '🏥 Médico', '🦷 Dentista', '👓 Óptica', '👕 Ropa/Zapatos', '🎁 Regalos', '❤️ Cuidado personal', '🎮 Entretenimiento', '🎬 Cine/Streaming', '📱 Suscripciones', '🏋️ Gimnasio', '🎓 Educación', '💳 Deuda/Préstamo', '🏦 Banco/Comisiones', '💼 Negocio', '👶 Niños/Familia', '🐾 Mascotas', '❓ Otros'];
+var BASE_CATS = ['🏠 Vivienda/Alquiler', '💡 Electricidad', '💧 Agua', '🔥 Gas', '📡 Internet/Cable', '🛋️ Muebles/Hogar', '🔧 Reparaciones', '🚗 Gasolina', '🚌 Transporte público', '🚕 Taxi/Uber', '✈️ Viajes/Vuelos', '🔩 Mecánico/Auto', '🍔 Comida rápida','🧺 Lavandería', '🛒 Supermercado', '🍽️ Restaurantes', '☕ Café/Bebidas', '💊 Farmacia', '🏥 Médico', '🦷 Dentista', '👓 Óptica', '👕 Ropa/Zapatos', '🎁 Regalos', '❤️ Cuidado personal', '🎮 Entretenimiento', '🎬 Cine/Streaming', '📱 Suscripciones', '🏋️ Gimnasio', '🎓 Educación', '💳 Deuda/Préstamo', '🏦 Banco/Comisiones', '💼 Negocio', '👶 Niños/Familia', '🐾 Mascotas', '❓ Otros'];
 
 // ── Auto-start: skip splash & tour for returning users ──
 window.addEventListener('DOMContentLoaded', function(){
@@ -2358,13 +2330,15 @@ async function authSubmit(){
   }catch(e){authMsg(e.message);}
 }
 async function resetPassword(){
-  var email=(document.getElementById('auth-email')||{}).value||''; email=email.trim();
+  var email=(document.getElementById('auth-email')||{}).value||'';
+  email=email.trim();
   if(!email){authMsg('Escribe tu email primero.');return;}
-  var siteUrl=window.location.origin+window.location.pathname;
-  try{
-    var r=await sb.auth.resetPasswordForEmail(email,{redirectTo:siteUrl});
-    authMsg(r.error?'❌ '+r.error.message:'✅ Te enviamos un enlace a '+email+'. Revisa tu bandeja de entrada.');
-  }catch(e){authMsg('❌ '+e.message);}
+  if(!sb){authMsg('❌ Sin conexión');return;}
+  sb.auth.signInWithOtp({email:email,options:{emailRedirectTo:window.location.origin,shouldCreateUser:false}})
+  .then(function(r){
+    if(r.error){authMsg('❌ '+r.error.message);}
+    else{authMsg('✅ Link enviado a '+email+'. Tócalo para entrar y cambia tu contraseña en ⚙️ Ajustes.');}
+  }).catch(function(e){authMsg('❌ '+e.message);});
 }
 
 function showNewPasswordForm(){
@@ -2806,5 +2780,73 @@ function exportPDF(){
   else{toast('Permite ventanas emergentes para exportar PDF');}
 }
 
+
+function changeAccountPassword(){
+  var p1=(document.getElementById('chpwd-1')||{}).value||'';
+  var p2=(document.getElementById('chpwd-2')||{}).value||'';
+  var msg=document.getElementById('chpwd-msg');
+  if(!msg)return;
+  if(p1.length<6){msg.style.color='var(--neg)';msg.textContent='❌ Mínimo 6 caracteres';return;}
+  if(p1!==p2){msg.style.color='var(--neg)';msg.textContent='❌ No coinciden';return;}
+  if(!sb||!currentUser){msg.textContent='❌ No autenticado';return;}
+  msg.textContent='⏳ Guardando...';
+  sb.auth.updateUser({password:p1}).then(function(r){
+    if(r.error){msg.style.color='var(--neg)';msg.textContent='❌ '+r.error.message;}
+    else{msg.style.color='var(--pos)';msg.textContent='✅ Contraseña actualizada';
+      document.getElementById('chpwd-1').value='';
+      document.getElementById('chpwd-2').value='';}
+  });
+}
+function updPasswordCard(){
+  var c=document.getElementById('card-change-pwd');
+  if(c)c.style.display=(currentUser&&!isGuestMode)?'block':'none';
+}
+function showResetScreen(){
+  var t=window.__rp||{};
+  var rs=document.getElementById('reset-screen');if(rs)rs.style.display='flex';
+  var sp=document.getElementById('splash');if(sp)sp.style.display='none';
+  var app=document.getElementById('app');if(app)app.style.display='none';
+  if(t.access_token&&sb){
+    sb.auth.setSession({access_token:t.access_token,refresh_token:t.refresh_token||''})
+    .then(function(r){
+      if(r.error){var e=document.getElementById('reset-error');if(e){e.style.display='block';e.textContent='⚠️ '+r.error.message;}}
+      else{var f=document.getElementById('reset-pwd1');if(f)setTimeout(function(){f.focus();},300);}
+    });
+  }
+}
+function doResetPassword(){
+  var p1=document.getElementById('reset-pwd1').value;
+  var p2=document.getElementById('reset-pwd2').value;
+  var msg=document.getElementById('reset-msg');
+  var btn=document.getElementById('reset-btn');
+  if(p1.length<6){msg.style.color='var(--neg)';msg.textContent='❌ Mínimo 6 caracteres';return;}
+  if(p1!==p2){msg.style.color='var(--neg)';msg.textContent='❌ No coinciden';return;}
+  if(!sb){msg.textContent='❌ Sin conexión';return;}
+  btn.disabled=true;btn.textContent='⏳ Guardando...';
+  sb.auth.updateUser({password:p1})
+  .then(function(r){
+    if(r.error){msg.style.color='var(--neg)';msg.textContent='❌ '+r.error.message;btn.disabled=false;btn.textContent='💾 Guardar nueva contraseña';}
+    else{msg.style.color='var(--pos)';msg.textContent='✅ ¡Contraseña actualizada!';
+      history.replaceState(null,'',window.location.pathname);
+      setTimeout(function(){document.getElementById('reset-screen').style.display='none';showAuth('✅ Inicia sesión con tu nueva contraseña.');},1500);}
+  }).catch(function(e){msg.style.color='var(--neg)';msg.textContent='❌ '+e.message;btn.disabled=false;btn.textContent='💾 Guardar nueva contraseña';});
+}
+// Recovery URL detection
+(function(){
+  try{
+    var h=window.location.hash||'';
+    if(h.indexOf('type=recovery')!==-1||(h.indexOf('access_token')!==-1&&h.indexOf('error=')===-1)){
+      var p={};
+      h.slice(1).split('&').forEach(function(s){var a=s.indexOf('=');if(a>-1)p[s.slice(0,a)]=decodeURIComponent(s.slice(a+1));});
+      window.__rp=p;
+      var s=document.createElement('style');
+      s.textContent='#reset-screen{display:flex!important}#splash,#app{display:none!important}';
+      document.head.appendChild(s);
+      window.addEventListener('DOMContentLoaded',function(){showResetScreen();});
+    }
+  }catch(e){}
+})();
+
 </script>
 </body>
+</html>
