@@ -165,14 +165,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 #app{display:none;flex-direction:column;height:100%;overflow:hidden}
 .sbar{background:var(--bg);padding:env(safe-area-inset-top,14px) 16px 10px;display:flex;justify-content:space-between;align-items:center;color:var(--text);font-size:13px;flex-shrink:0}
 .appname{font-size:16px;font-weight:800;background:linear-gradient(135deg,#d4b896,#6a9ab8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.topbar{background:linear-gradient(160deg,#111111,#1a1a1a);padding:12px 14px 14px;flex-shrink:0}
-.sum3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;background:linear-gradient(160deg,#111111,#1a1a1a);padding:0 14px 14px;flex-shrink:0}
+.topbar{background:var(--card);padding:12px 14px 14px;flex-shrink:0}
+.sum3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;background:var(--card);padding:0 14px 14px;flex-shrink:0}
 .sc{border-radius:10px;padding:9px 8px}
 .sc .sl{font-size:10px;margin-bottom:2px;font-weight:600}
 .sc .sv{font-size:13px;font-weight:700}
-.sc.g{background:var(--pos-bg);border:1px solid #1a3a22}.sc.g .sl{color:var(--pos)}.sc.g .sv{color:var(--pos)}
-.sc.r{background:var(--neg-bg);border:1px solid #3a1818}.sc.r .sl{color:var(--neg)}.sc.r .sv{color:var(--neg)}
-.sc.b{background:#0e141e;border:1px solid #1a2e40}.sc.b .sl{color:#90afc0}.sc.b .sv{color:var(--sum-b-txt)}
+.sc.g{background:var(--pos-bg);border:1px solid var(--pos-bdr)}.sc.g .sl{color:var(--pos)}.sc.g .sv{color:var(--pos)}
+.sc.r{background:var(--neg-bg);border:1px solid var(--neg-bdr)}.sc.r .sl{color:var(--neg)}.sc.r .sv{color:var(--neg)}
+.sc.b{background:var(--sum-b-bg);border:1px solid var(--sum-b-bdr)}.sc.b .sl{color:#90afc0}.sc.b .sv{color:var(--sum-b-txt)}
 .tabs{display:none;background:var(--navbar);border-bottom:1px solid #2a2a2a;overflow-x:auto;scrollbar-width:none;flex-shrink:0;-webkit-overflow-scrolling:touch}
 .tabs::-webkit-scrollbar{display:none}
 .tab{flex-shrink:0;padding:10px 11px;font-size:11px;color:var(--text2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-weight:600}
@@ -462,13 +462,13 @@ if ('serviceWorker' in navigator) {
       <span class="appname">GestorRD</span>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
-      <button onclick="showTour()" style="background:rgba(124,58,237,.2);border:1px solid #6a5030;border-radius:10px;padding:5px 9px;color:#d0c8a0;font-size:11px;font-weight:700;cursor:pointer">Tour</button>
+      <button onclick="showTour()" style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:5px 9px;color:var(--text);font-size:11px;font-weight:700;cursor:pointer">Tour</button>
     </div>
   </div>
   <div class="topbar">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div><div style="font-size:10px;color:var(--text2);font-weight:500;margin-bottom:2px">Periodo</div><div id="top-month" style="font-size:18px;font-weight:700;color:var(--text)">Junio 2025</div></div>
-      <div style="background:rgba(124,58,237,.25);border:1px solid #6a5030;border-radius:14px;padding:5px 10px;font-size:12px;color:#d0c8a0;font-weight:700">💰 <span id="patr">$0.00</span></div>
+      <div style="background:var(--pos-bg);border:1px solid var(--pos-bdr);border-radius:14px;padding:5px 10px;font-size:12px;color:var(--text);font-weight:700">💰 <span id="patr">$0.00</span></div>
     </div>
   </div>
   <div class="sum3">
