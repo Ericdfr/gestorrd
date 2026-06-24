@@ -463,19 +463,7 @@ if (false && 'serviceWorker' in navigator) {
       <span class="appname">GestorRD</span>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
-      <div style="position:relative">
-      <button onclick="togConv()" style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:5px 9px;color:var(--acc);font-size:11px;font-weight:700;cursor:pointer">💱</button>
-      <div id="conv-panel" style="display:none;position:absolute;right:0;top:36px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;width:240px;z-index:400;box-shadow:0 4px 20px var(--shadow)">
-        <div style="font-size:12px;font-weight:800;color:var(--acc);margin-bottom:8px">💱 Convertidor</div>
-        <input id="conv-input" type="number" placeholder="Monto" oninput="calcConv()" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--input-bg);color:var(--text);font-size:14px;font-family:inherit;margin-bottom:8px">
-        <select id="conv-dir" onchange="calcConv()" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--input-bg);color:var(--text);font-size:13px;margin-bottom:8px">
-          <option value="usd2dop">USD → DOP</option>
-          <option value="dop2usd">DOP → USD</option>
-        </select>
-        <div id="conv-result" style="font-size:14px;font-weight:700;color:var(--pos);text-align:center;min-height:20px"></div>
-      </div>
-    </div>
-    <button onclick="showTour()" style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:5px 9px;color:var(--text);font-size:11px;font-weight:700;cursor:pointer">Tour</button>
+      <button onclick="sN('busqueda');initSearch();closeMoreMenu()" style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:5px 9px;color:var(--acc);font-size:11px;font-weight:700;cursor:pointer">💱</button>
     </div>
   </div>
   <div class="topbar">
@@ -704,7 +692,19 @@ if (false && 'serviceWorker' in navigator) {
     </div>
     <input id="search-input" type="search" placeholder="🔍 Buscar por descripción, categoría o fecha..." style="width:100%;padding:10px 12px;border:1px solid var(--border2);border-radius:10px;font-size:14px;background:var(--input-bg);color:var(--text);font-family:inherit;margin-bottom:12px">
     <div id="search-results"><div class="empty" style="padding:20px;text-align:center">Escribe para buscar...</div></div>
+  
+  <div class="card" style="margin-top:10px">
+    <div class="ct">💱 Convertidor USD↔DOP</div>
+    <div style="display:flex;gap:8px;margin-top:8px;margin-bottom:10px">
+      <input id="conv-input" type="number" placeholder="Monto" oninput="calcConv()" style="flex:1;padding:10px;border:1px solid var(--border2);border-radius:10px;font-size:14px;background:var(--input-bg);color:var(--text);font-family:inherit">
+      <select id="conv-dir" onchange="calcConv()" style="padding:10px;border:1px solid var(--border2);border-radius:10px;background:var(--input-bg);color:var(--text);font-size:13px;font-family:inherit">
+        <option value="usd2dop">USD → DOP</option>
+        <option value="dop2usd">DOP → USD</option>
+      </select>
+    </div>
+    <div id="conv-result" style="font-size:18px;font-weight:800;color:var(--pos);text-align:center;min-height:28px;padding:10px;background:var(--bg3);border-radius:10px"></div>
   </div>
+</div>
 </div>
 
 id="tab-ahorros" class="sec">
@@ -1002,7 +1002,17 @@ id="tab-ahorros" class="sec">
 
 <!-- NOVEDADES -->
   <!-- NOVEDADES -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+// Load Supabase async - app works with or without it (guest mode)
+(function(){
+  var s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+  s.crossOrigin='anonymous';
+  s.onload=function(){window.__sbLoaded=true;};
+  s.onerror=function(){window.__sbLoaded=false;console.warn('Supabase offline - guest mode only');};
+  document.head.appendChild(s);
+})();
+</script>
 <script>
 var pin=null,pinOn=false,pinBuf='',pinMode='check',pinTmp='',lang='es',sLang=null;
 var vY=new Date().getFullYear(),vM=new Date().getMonth();
@@ -1011,7 +1021,7 @@ var vY=new Date().getFullYear(),vM=new Date().getMonth();
 const SUPABASE_URL = 'https://vksnxkdigymlkzjynuso.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_yFI1VXzsI0MibnPqxAMJGw_s7PT1E2z';
 const OWNER_EMAIL = 'ericdfr1234@gmail.com';
-var sb = (window.supabase && SUPABASE_ANON_KEY) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+var sb = null; // initialized after Supabase loads async
 var currentUser = null;
 var isGuestMode = false;
 var authReady = false;
@@ -1397,6 +1407,26 @@ var BASE_CATS = ['🏠 Vivienda/Alquiler', '💡 Electricidad', '💧 Agua', '�
 
 // ── Auto-start: skip splash & tour for returning users ──
 window.addEventListener('DOMContentLoaded', function(){
+  // Wait for Supabase (max 3s), then start regardless
+  var _t=0;
+  function _boot(){
+    if(window.__sbLoaded!==undefined||_t>=30){
+      // Init Supabase client now that CDN has loaded (or failed)
+      try{
+        if(!sb && window.supabase && typeof SUPABASE_URL!=='undefined'){
+          sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+        }
+      }catch(e){console.warn('Supabase init failed:',e);}
+      _startApp();
+    } else {
+      _t++;
+      setTimeout(_boot,100);
+    }
+  }
+  _boot();
+});
+
+function _startApp(){
   try{
     // ── PRIORITY 1: Recovery link from email ──
     var hash = window.location.hash || '';
@@ -1460,7 +1490,7 @@ window.addEventListener('DOMContentLoaded', function(){
       if(splash3) splash3.style.display = 'flex';
     }
   }catch(e){}
-});
+}
 
 
 // ══ DETAIL / EDIT MODAL ══
@@ -3109,7 +3139,7 @@ function renderSearchResults(){
   }
   
   el.innerHTML = results.map(function(r){
-    return '<div onclick="showDetail(''+r.list+'','+r.idx+')" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer">'
+    return '<div onclick="showDetail(\"'+r.list+'\",'+r.idx+')" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer">'
       +'<div style="display:flex;justify-content:space-between;align-items:center">'
       +'<div><div style="font-size:11px;color:var(--text3)">' + r.type + ' '+r.typeLabel+' · '+(r.item.f||'')+'</div>'
       +'<div style="font-size:14px;font-weight:700;color:var(--text);margin-top:2px">'+(r.item.d||r.item.cat||'')+'</div>'
@@ -3123,10 +3153,12 @@ function renderSearchResults(){
 // ── 💱 CONVERTIDOR USD↔DOP ──
 var convOpen = false;
 function togConv(){
-  convOpen = !convOpen;
-  var el = document.getElementById('conv-panel');
-  if(el) el.style.display = convOpen ? 'block' : 'none';
-  if(convOpen) document.getElementById('conv-input').focus();
+  sN('busqueda');
+  initSearch();
+  setTimeout(function(){
+    var el = document.getElementById('conv-input');
+    if(el) el.focus();
+  }, 200);
 }
 function calcConv(){
   var val = parseFloat(document.getElementById('conv-input').value)||0;
