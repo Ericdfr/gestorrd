@@ -345,7 +345,7 @@ canvas{max-width:100%;display:block;margin:0 auto}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script>
-if ('serviceWorker' in navigator) {
+if (false && 'serviceWorker' in navigator) {
   window.addEventListener('load', function() {
     navigator.serviceWorker.register('./sw.js').catch(function(err){ console.log('SW error', err); });
   });
@@ -421,6 +421,7 @@ if ('serviceWorker' in navigator) {
   <button style="margin-top:18px;background:none;border:none;color:var(--text3);font-size:13px;cursor:pointer;font-weight:600;padding:10px" onclick="skipPin()" id="pskip">Omitir por ahora</button>
 </div>
 
+<div id="reset-screen" style="display:none;position:absolute;inset:0;background:var(--bg);z-index:500;flex-direction:column;align-items:center;justify-content:center;padding:24px"><div style="width:100%;max-width:360px"><div style="text-align:center;margin-bottom:24px"><div style="font-size:48px">🔐</div><div style="font-size:20px;font-weight:800;color:var(--text)">Nueva contraseña</div></div><div id="reset-error" style="display:none;background:var(--neg-bg);border:1px solid var(--neg-bdr);border-radius:10px;padding:12px;margin-bottom:12px;font-size:13px;color:var(--neg);text-align:center"></div><div style="margin-bottom:12px"><label style="font-size:12px;color:var(--text2);font-weight:600;display:block;margin-bottom:5px">Nueva contraseña</label><input type="password" id="reset-pwd1" placeholder="Mínimo 6 caracteres" style="width:100%;padding:12px;border:1px solid var(--border2);border-radius:10px;font-size:15px;background:var(--input-bg);color:var(--text);font-family:inherit"></div><div style="margin-bottom:16px"><label style="font-size:12px;color:var(--text2);font-weight:600;display:block;margin-bottom:5px">Confirmar</label><input type="password" id="reset-pwd2" placeholder="Repite la contraseña" style="width:100%;padding:12px;border:1px solid var(--border2);border-radius:10px;font-size:15px;background:var(--input-bg);color:var(--text);font-family:inherit"></div><button onclick="doResetPassword()" id="reset-btn" style="width:100%;padding:14px;background:var(--btn-bg);color:var(--acc-text);border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer">💾 Guardar nueva contraseña</button><div id="reset-msg" style="font-size:13px;font-weight:600;text-align:center;margin-top:10px;min-height:18px"></div><div style="text-align:center;margin-top:16px"><button onclick="history.replaceState(null,'',window.location.pathname);location.reload()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer">← Volver al inicio</button></div></div></div>
 <div id="tour-overlay">
   <div class="tour-card">
     <div class="tour-icon" id="tico">💰</div>
@@ -462,7 +463,19 @@ if ('serviceWorker' in navigator) {
       <span class="appname">GestorRD</span>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
-      <button onclick="showTour()" style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:5px 9px;color:var(--text);font-size:11px;font-weight:700;cursor:pointer">Tour</button>
+      <div style="position:relative">
+      <button onclick="togConv()" style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:5px 9px;color:var(--acc);font-size:11px;font-weight:700;cursor:pointer">💱</button>
+      <div id="conv-panel" style="display:none;position:absolute;right:0;top:36px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;width:240px;z-index:400;box-shadow:0 4px 20px var(--shadow)">
+        <div style="font-size:12px;font-weight:800;color:var(--acc);margin-bottom:8px">💱 Convertidor</div>
+        <input id="conv-input" type="number" placeholder="Monto" oninput="calcConv()" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--input-bg);color:var(--text);font-size:14px;font-family:inherit;margin-bottom:8px">
+        <select id="conv-dir" onchange="calcConv()" style="width:100%;padding:8px;border:1px solid var(--border2);border-radius:8px;background:var(--input-bg);color:var(--text);font-size:13px;margin-bottom:8px">
+          <option value="usd2dop">USD → DOP</option>
+          <option value="dop2usd">DOP → USD</option>
+        </select>
+        <div id="conv-result" style="font-size:14px;font-weight:700;color:var(--pos);text-align:center;min-height:20px"></div>
+      </div>
+    </div>
+    <button onclick="showTour()" style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:5px 9px;color:var(--text);font-size:11px;font-weight:700;cursor:pointer">Tour</button>
     </div>
   </div>
   <div class="topbar">
@@ -493,6 +506,7 @@ if ('serviceWorker' in navigator) {
   </div>
 
   <div id="tab-dashboard" class="sec active">
+    <div id="payment-alerts" style="display:none;margin-bottom:12px"></div>
     <div class="card"><div class="ct">📅 Ver por mes</div><div class="mn"><button onclick="chM(-1)">&#8249; Ant.</button><span id="mnl">Junio 2025</span><button onclick="chM(1)">Sig. &#8250;</button></div></div>
     <div id="dash-alerts"></div>
     <div class="card"><div class="ct">📊 Gastos por categoria</div><canvas id="cG" height="160"></canvas><div id="cGL" style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px"></div></div>
@@ -554,6 +568,20 @@ if ('serviceWorker' in navigator) {
 
     <div class="card"><div class="ct">📋 Historial</div><div id="gList"><div class="empty">Sin gastos</div></div></div>
   </div>
+
+  
+    <div class="card" style="margin-top:10px">
+      <div class="ct">🔁 Gastos fijos mensuales</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+        <div class="f"><label>Descripción</label><input type="text" id="gf-desc" placeholder="Ej: Netflix, Gimnasio..."></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="f"><label>Monto USD</label><input type="number" id="gf-mo" placeholder="0.00"></div>
+          <div class="f"><label>Día del mes</label><input type="number" id="gf-dia" placeholder="1-31" min="1" max="31"></div>
+        </div>
+        <button class="btn" onclick="saveGastoFijo()">💾 Guardar gasto fijo</button>
+      </div>
+      <div id="gastos-fijos-list" style="margin-top:12px"></div>
+    </div>
 
   <div id="tab-deudas" class="sec">
     <div class="card"><div class="ct">➕ Agregar deuda</div>
@@ -666,7 +694,20 @@ if ('serviceWorker' in navigator) {
     <div class="card"><div class="ct">🏦 Mis cuentas</div><div id="bList"><div class="empty">Sin cuentas</div></div></div>
   </div>
 
-  <div id="tab-ahorros" class="sec">
+  <div <div id="tab-busqueda" class="sec">
+  <div class="card">
+    <div class="ct">🔍 Buscar transacciones</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button id="sf-all" onclick="setSearchFilter('all')" style="flex:1;padding:7px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:var(--acc);color:var(--acc-text)">Todo</button>
+      <button id="sf-ingresos" onclick="setSearchFilter('ingresos')" style="flex:1;padding:7px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:var(--btn-sec);color:var(--text2)">💵 Ingresos</button>
+      <button id="sf-gastos" onclick="setSearchFilter('gastos')" style="flex:1;padding:7px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:var(--btn-sec);color:var(--text2)">💸 Gastos</button>
+    </div>
+    <input id="search-input" type="search" placeholder="🔍 Buscar por descripción, categoría o fecha..." style="width:100%;padding:10px 12px;border:1px solid var(--border2);border-radius:10px;font-size:14px;background:var(--input-bg);color:var(--text);font-family:inherit;margin-bottom:12px">
+    <div id="search-results"><div class="empty" style="padding:20px;text-align:center">Escribe para buscar...</div></div>
+  </div>
+</div>
+
+id="tab-ahorros" class="sec">
     <div class="card"><div class="ct">➕ Nueva meta de ahorro</div>
       <div class="f"><label>Motivo / Meta</label><input type="text" id="ahm" placeholder="Ej: Vacaciones"></div>
       <div class="fr"><div class="f"><label>Saldo actual</label><input type="number" id="ahs" placeholder="0.00" inputmode="decimal"></div><div class="f"><label>Meta total</label><input type="number" id="ahmt" placeholder="0.00" inputmode="decimal"></div></div>
@@ -675,6 +716,13 @@ if ('serviceWorker' in navigator) {
     </div>
     <div class="card"><div class="ct">🐷 Mis metas</div><div id="ahList"><div class="empty">Sin metas</div></div></div>
   </div>
+
+  
+    <div class="card" style="margin-top:10px">
+      <div class="ct">🎯 Metas de ahorro</div>
+      <div id="metas-list" style="margin-top:8px"></div>
+      <div style="font-size:11px;color:var(--text2);margin-top:8px">💡 Agrega una "Meta" a tus cuentas de ahorro para ver el progreso.</div>
+    </div>
 
   <div id="tab-presupuesto" class="sec">
     <div class="card"><div class="ct">📊 Presupuesto mensual</div>
@@ -726,6 +774,7 @@ if ('serviceWorker' in navigator) {
       <div class="srow"><div><div class="slbl">🔔 Alertas de vencimiento</div><div class="ssub">Avisos 7 dias antes del pago</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
       <div class="srow"><div><div class="slbl">📊 Alertas de presupuesto</div><div class="ssub">Aviso al llegar al 80% del limite</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
     </div>
+    <div class="card" id="card-change-pwd" style="display:none"><div class="ct">🔑 Cambiar contraseña</div><div class="f"><label>Nueva contraseña</label><input type="password" id="chpwd-1" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div><div class="f"><label>Confirmar</label><input type="password" id="chpwd-2" autocomplete="new-password"></div><div id="chpwd-msg" style="font-size:13px;font-weight:600;text-align:center;min-height:18px;margin-bottom:8px"></div><button class="btn" onclick="changeAccountPassword()">💾 Guardar contraseña</button></div>
     <div class="card"><div class="ct">🔐 Cambiar PIN</div>
       <div class="f"><label>Nuevo PIN (4 digitos)</label><input type="password" id="npin" maxlength="4" placeholder="••••" inputmode="numeric"></div>
       <button class="btn" onclick="chPin()">Guardar nuevo PIN</button>
@@ -763,6 +812,8 @@ if ('serviceWorker' in navigator) {
       </div>
       <button onclick="exportPDF()" style="background:linear-gradient(135deg,#1d4ed8,#1e40af);color:white;border:none;border-radius:10px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer">📄 PDF</button>
     </div>
+
+    <div class="card" id="comp-section"></div>
 
     <!-- KPIs del año -->
     <div class="card">
@@ -808,52 +859,65 @@ if ('serviceWorker' in navigator) {
 
   </div>
 
-  <div id="tab-novedades" class="sec">
-    <div class="card" style="text-align:center;padding:14px 12px">
-      <div style="font-size:32px;margin-bottom:8px">🆕</div>
-      <div style="font-size:16px;font-weight:800;color:var(--text)">Novedades GestorRD</div>
-      <div style="font-size:11px;color:var(--text3);margin-top:4px">Historial de actualizaciones</div>
-    </div>
+  <div <div <div id="tab-novedades" class="sec">
+  <div class="card">
+    <div class="ct">🆕 Novedades v3.1 — Junio 2026</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
 
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-size:14px;font-weight:800;color:var(--acc)">Versión 3.0</div>
-        <div style="font-size:11px;color:var(--text3);background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:3px 9px">Jun 2026</div>
+      <div style="background:var(--pos-bg);border:1px solid var(--pos-bdr);border-radius:10px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:800;color:var(--pos);margin-bottom:3px">🔔 Alertas de pagos</div>
+        <div style="font-size:12px;color:var(--text2)">El dashboard ahora muestra alertas cuando se acerca la fecha de corte de una TC o vencimiento de una deuda.</div>
       </div>
-      <div class="nov-item">💾 <strong>Respaldo automático cada 24h</strong> — Tus datos se guardan automáticamente en un archivo que puedes guardar en iCloud Drive.</div>
-      <div class="nov-item">📤 <strong>Restaurar datos</strong> — Si eliminas la app puedes recuperar todos tus datos importando el archivo de respaldo.</div>
-      <div class="nov-item">🆕 <strong>Sección de novedades</strong> — Ahora puedes ver aquí cada actualización y sus nuevas funciones.</div>
-      <div class="nov-item">💳 <strong>Pagar deuda sin cuenta</strong> — Ya puedes registrar pagos de deuda aunque no tengas cuentas de banco agregadas.</div>
-    </div>
 
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-size:14px;font-weight:800;color:var(--text2)">Versión 2.0</div>
-        <div style="font-size:11px;color:var(--text3);background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:3px 9px">Jun 2026</div>
+      <div style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:800;color:var(--acc);margin-bottom:3px">🔍 Búsqueda y filtros</div>
+        <div style="font-size:12px;color:var(--text2)">Busca cualquier ingreso o gasto por descripción, categoría o fecha. Disponible en ☰ Más → 🔍 Búsqueda.</div>
       </div>
-      <div class="nov-item">💳 <strong>Tarjetas de crédito</strong> — Agrega tarjetas con límite en USD y DOP, fecha de corte y fecha límite de pago.</div>
-      <div class="nov-item">🏦 <strong>Ingreso auto a cuenta</strong> — Al registrar un ingreso se mueve automáticamente a la cuenta de banco que elijas.</div>
-      <div class="nov-item">💸 <strong>Gasto deduce de cuenta</strong> — Al pagar con tarjeta o débito el saldo disponible se descuenta solo.</div>
-      <div class="nov-item">✏️ <strong>Editar y eliminar</strong> — Toca cualquier registro para ver el detalle, editarlo o eliminarlo.</div>
-      <div class="nov-item">💰 <strong>Pagar deuda desde cuenta</strong> — Registra pagos de deuda y se descuenta automáticamente de tu cuenta.</div>
-      <div class="nov-item">📊 <strong>Historial de pagos en deudas</strong> — Cada deuda guarda el historial de todos los pagos realizados.</div>
-    </div>
 
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-size:14px;font-weight:800;color:var(--text3)">Versión 1.0</div>
-        <div style="font-size:11px;color:var(--text3);background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:3px 9px">Jun 2025</div>
+      <div style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:800;color:var(--acc);margin-bottom:3px">💱 Convertidor USD↔DOP</div>
+        <div style="font-size:12px;color:var(--text2)">Toca el botón 💱 en la barra superior para convertir entre USD y DOP usando la tasa actualizada.</div>
       </div>
-      <div class="nov-item">🚀 <strong>Lanzamiento de GestorRD</strong> — Dashboard financiero con ingresos, gastos, deudas, bancos y ahorros.</div>
-      <div class="nov-item">🌎 <strong>Bilingüe</strong> — Soporte completo en Español e Inglés.</div>
-      <div class="nov-item">🔐 <strong>PIN de seguridad</strong> — Protege el acceso a tu información financiera.</div>
-      <div class="nov-item">📊 <strong>Presupuesto mensual</strong> — Define límites por categoría con alertas automáticas.</div>
-      <div class="nov-item">🧮 <strong>Calculadora de préstamos</strong> — Tabla de amortización completa.</div>
-      <div class="nov-item">💱 <strong>Conversión USD ↔ DOP</strong> — Tasa de cambio actualizable en tiempo real.</div>
+
+      <div style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:800;color:var(--acc);margin-bottom:3px">🎯 Metas de ahorro</div>
+        <div style="font-size:12px;color:var(--text2)">Agrega una meta a tus cuentas de ahorro y ve el progreso con una barra visual en la sección Ahorros.</div>
+      </div>
+
+      <div style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:800;color:var(--acc);margin-bottom:3px">📊 Comparar meses</div>
+        <div style="font-size:12px;color:var(--text2)">El Resumen Anual ahora incluye comparación del mes actual vs el mes anterior con % de cambio.</div>
+      </div>
+
+      <div style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:800;color:var(--acc);margin-bottom:3px">🔁 Gastos fijos mensuales</div>
+        <div style="font-size:12px;color:var(--text2)">Guarda gastos que se repiten cada mes (Netflix, gimnasio, etc.) y aplícalos con un toque desde la sección Gastos.</div>
+      </div>
+
+      <div style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:800;color:var(--acc);margin-bottom:3px">🏷️ Nuevo logo y paleta</div>
+        <div style="font-size:12px;color:var(--text2)">Logo profesional con degradado azul→verde. Paleta de colores basada en el logo.</div>
+      </div>
+
+      <div style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:800;color:var(--acc);margin-bottom:3px">🎨 Temas claro y oscuro</div>
+        <div style="font-size:12px;color:var(--text2)">Sigue el modo de tu iPhone automáticamente. Cámbialo en ⚙️ Ajustes → Tema.</div>
+      </div>
+
+      <div style="background:var(--pos-bg);border:1px solid var(--pos-bdr);border-radius:10px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:800;color:var(--pos);margin-bottom:3px">🔐 Magic Link + cambiar contraseña</div>
+        <div style="font-size:12px;color:var(--text2)">Recupera acceso por email sin contraseña. Cámbiala en ⚙️ Ajustes.</div>
+      </div>
+
+      <div style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:800;color:var(--acc);margin-bottom:3px">💰 Disponible = balance real</div>
+        <div style="font-size:12px;color:var(--text2)">El disponible muestra el balance total de tus cuentas, no ingresos menos gastos del mes.</div>
+      </div>
+
     </div>
   </div>
-
-  <div id="tab-sugerencias" class="sec">
+</div>
+<div id="tab-sugerencias" class="sec">
     <div class="card" style="text-align:center;padding:16px">
       <svg width="50" height="50" viewBox="0 0 90 90" style="margin:0 auto 10px"><path d="M45 6 L78 20 L78 50 C78 68 45 84 45 84 C45 84 12 68 12 50 L12 20 Z" fill="url(#lg1)"/><text x="45" y="54" text-anchor="middle" font-size="28" font-weight="900" fill="#5dae80" font-family="-apple-system">$</text></svg>
       <div style="font-size:17px;font-weight:800;color:var(--text)">GestorRD</div>
@@ -890,14 +954,15 @@ if ('serviceWorker' in navigator) {
     <button class="nb" id="nb-ingresos" onclick="sN('ingresos')"><span>💵</span>Ingresos</button>
     <button class="nb" id="nb-deudas" onclick="sN('deudas')"><span>💳</span>Deudas</button>
     <button class="nb" id="nb-bancos" onclick="sN('bancos')"><span>🏦</span>Bancos</button>
-    <button class="nb" id="nb-presupuesto" onclick="sN('presupuesto')"><span>📊</span>Presup.</button>
+    <button class="nb" id="nb-gastos" onclick="sN('gastos')"><span>💸</span>Gastos</button>
     <button class="nb" id="nb-more" onclick="togMoreMenu()"><span>⋯</span>Más</button>
   </div>
 </div>
 
 <div class="more-overlay" id="more-overlay" onclick="closeMoreMenu()"></div>
 <div class="more-menu" id="more-menu">
-  <button class="more-btn" onclick="sN('gastos');closeMoreMenu()"><span>💸</span>Gastos</button>
+  <button class="more-btn" id="nb-presupuesto" onclick="sN('presupuesto');closeMoreMenu()"><span>📊</span>Presupuesto</button>
+  <button class="more-btn" onclick="sN('busqueda');initSearch();closeMoreMenu()"><span>🔍</span>Búsqueda</button>
   <button class="more-btn" onclick="sN('ahorros');closeMoreMenu()"><span>🐷</span>Ahorros</button>
   <button class="more-btn" onclick="sN('calculadora');closeMoreMenu()"><span>🧮</span>Calc.</button>
   <button class="more-btn" onclick="sN('resumen');closeMoreMenu()"><span>📈</span>Anual</button>
@@ -1019,6 +1084,11 @@ function launch(skipTour){
   initGestorAuth();
   if(!skipTour)showTour();
   updD();
+  showPaymentAlerts();
+  initSearch();
+  initGastosFijos();
+  updAhorrosMetas();
+  updComparacion();
 }
 function sN(n){document.querySelectorAll('.sec').forEach(function(s){s.classList.remove('active');});document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});document.querySelectorAll('.nb').forEach(function(b){b.classList.remove('active');});document.getElementById('tab-'+n).classList.add('active');if(document.getElementById('nb-'+n))document.getElementById('nb-'+n).classList.add('active');var moreSecs=['gastos','ahorros','calculadora','resumen','novedades','sugerencias','ajustes','admin'];if(moreSecs.indexOf(n)>-1){var mb=document.getElementById('nb-more');if(mb)mb.classList.add('active');}var m={dashboard:0,ingresos:1,gastos:2,deudas:3,bancos:4,ahorros:5,presupuesto:6,calculadora:7,ajustes:8,sugerencias:9,novedades:10,resumen:11};if(m[n]!==undefined)document.querySelectorAll('.tab')[m[n]].classList.add('active');if(n==='dashboard')updD();if(n==='presupuesto')rnBud();if(n==='ajustes')updBackupStatus();if(n==='resumen')updResumen();if(n==='admin')loadAdminPanel();}
 function chM(dir){vM+=dir;if(vM>11){vM=0;vY++;}if(vM<0){vM=11;vY--;}var l=MES[vM]+' '+vY;document.getElementById('mnl').textContent=l;document.getElementById('top-month').textContent=l;updD();}
@@ -1202,7 +1272,7 @@ function addG(){
   D.g.push(gasto);
   document.getElementById('gd').value='';
   document.getElementById('gmo').value='';
-  rnG();rnB();updD();rnBud();saveD();toast('Gasto guardado ✓');
+  rnG();rnB();updD();rnBud();showPaymentAlerts();saveD();toast('Gasto guardado ✓');
 }
 function rnG(){var el=document.getElementById('gList');if(!D.g.length){el.innerHTML='<div class="empty">Sin gastos</div>';return;}var idx=D.g.slice().reverse().map(function(_,i){return D.g.length-1-i;});el.innerHTML=D.g.slice().reverse().map(function(x,i){var ri=idx[i];return'<div class="li" onclick="showDetail(\'g\','+ri+')" style="cursor:pointer"><div><div class="ln">'+x.cat+' '+x.d+'</div><div class="lm">'+x.f+' · '+x.p+'</div></div><div style="text-align:right"><div class="la neg">-'+fmt(x.mo,x.mon)+'</div><div style="font-size:11px;color:#d4b896;margin-top:3px">Ver ›</div></div></div>';}).join('');}
 function addD(){var nom=document.getElementById('dn').value.trim(),tipo=document.getElementById('dt').value;if(!nom){toast('Ingresa el nombre');return;}var obj={nom:nom,tipo:tipo,mon:document.getElementById('dmon').value};if(tipo==='Tarjeta Credito'){var s=document.getElementById('ds').value;if(!s){toast('Ingresa el saldo');return;}obj.sal=Number(s);obj.f=document.getElementById('dftc').value;obj.estado='Activo';}else if(tipo==='Prestamo'){var ta=document.getElementById('dta').value,mp=document.getElementById('dmp').value;if(!ta||!mp){toast('Ingresa tasa y monto');return;}obj.bco=document.getElementById('dbp').value;obj.tp=document.getElementById('dtp').value;obj.tasa=Number(ta);obj.mp=Number(mp);obj.f=document.getElementById('dfp').value;obj.estado='Activo';}else if(tipo==='Personal'){var q=document.getElementById('dq').value.trim(),mpe=document.getElementById('dmpe').value;if(!q||!mpe){toast('Ingresa quien y monto');return;}obj.q=q;obj.mo=Number(mpe);obj.f=document.getElementById('dfpe').value;obj.estado='Activo';}else{obj.bal=Number(document.getElementById('dbo').value||0);obj.f=document.getElementById('dfo').value;obj.estado=document.getElementById('deo').value;}D.d.push(obj);document.getElementById('dn').value='';['ds','dbp','dta','dmp','dq','dmpe','dbo'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});rnD();updD();updMov();updPagarDeuda();saveD();toast('Deuda guardada ✓');}
@@ -1323,7 +1393,7 @@ function checkRateUpdate(){
 }
 
 // ── Categorías base (debe existir antes del auto-start) ──
-var BASE_CATS = ['🏠 Vivienda/Alquiler', '💡 Electricidad', '💧 Agua', '🔥 Gas', '📡 Internet/Cable', '🛋️ Muebles/Hogar', '🔧 Reparaciones', '🚗 Gasolina', '🚌 Transporte público', '🚕 Taxi/Uber', '✈️ Viajes/Vuelos', '🔩 Mecánico/Auto', '🍔 Comida rápida', '🛒 Supermercado', '🍽️ Restaurantes', '☕ Café/Bebidas', '💊 Farmacia', '🏥 Médico', '🦷 Dentista', '👓 Óptica', '👕 Ropa/Zapatos', '🎁 Regalos', '❤️ Cuidado personal', '🎮 Entretenimiento', '🎬 Cine/Streaming', '📱 Suscripciones', '🏋️ Gimnasio', '🎓 Educación', '💳 Deuda/Préstamo', '🏦 Banco/Comisiones', '💼 Negocio', '👶 Niños/Familia', '🐾 Mascotas', '❓ Otros'];
+var BASE_CATS = ['🏠 Vivienda/Alquiler', '💡 Electricidad', '💧 Agua', '🔥 Gas', '📡 Internet/Cable', '🛋️ Muebles/Hogar', '🔧 Reparaciones', '🚗 Gasolina', '🚌 Transporte público', '🚕 Taxi/Uber', '✈️ Viajes/Vuelos', '🔩 Mecánico/Auto', '🍔 Comida rápida','🧺 Lavandería', '🛒 Supermercado', '🍽️ Restaurantes', '☕ Café/Bebidas', '💊 Farmacia', '🏥 Médico', '🦷 Dentista', '👓 Óptica', '👕 Ropa/Zapatos', '🎁 Regalos', '❤️ Cuidado personal', '🎮 Entretenimiento', '🎬 Cine/Streaming', '📱 Suscripciones', '🏋️ Gimnasio', '🎓 Educación', '💳 Deuda/Préstamo', '🏦 Banco/Comisiones', '💼 Negocio', '👶 Niños/Familia', '🐾 Mascotas', '❓ Otros'];
 
 // ── Auto-start: skip splash & tour for returning users ──
 window.addEventListener('DOMContentLoaded', function(){
@@ -2397,14 +2467,16 @@ async function authSubmit(){
     else authMsg('Revisa tu correo para confirmar la cuenta.');
   }catch(e){authMsg(e.message);}
 }
-async function resetPassword(){
-  var email=(document.getElementById('auth-email')||{}).value||''; email=email.trim();
+function resetPassword(){
+  var email=(document.getElementById('auth-email')||{}).value||'';
+  email=email.trim();
   if(!email){authMsg('Escribe tu email primero.');return;}
-  var siteUrl=window.location.origin+window.location.pathname;
-  try{
-    var r=await sb.auth.resetPasswordForEmail(email,{redirectTo:siteUrl});
-    authMsg(r.error?'❌ '+r.error.message:'✅ Te enviamos un enlace a '+email+'. Revisa tu bandeja de entrada.');
-  }catch(e){authMsg('❌ '+e.message);}
+  if(!sb){authMsg('Sin conexión.');return;}
+  sb.auth.signInWithOtp({email:email,options:{emailRedirectTo:window.location.origin,shouldCreateUser:false}})
+  .then(function(r){
+    if(r.error){authMsg('❌ '+r.error.message);}
+    else{authMsg('✅ Link enviado a '+email+'. Tócalo para entrar y cambia tu contraseña en ⚙️ Ajustes.');}
+  }).catch(function(e){authMsg('❌ '+(e.message||'Error'));});
 }
 
 function showNewPasswordForm(){
@@ -2846,5 +2918,347 @@ function exportPDF(){
   else{toast('Permite ventanas emergentes para exportar PDF');}
 }
 
+
+function changeAccountPassword(){
+  var p1=(document.getElementById('chpwd-1')||{}).value||'';
+  var p2=(document.getElementById('chpwd-2')||{}).value||'';
+  var msg=document.getElementById('chpwd-msg');
+  if(!msg)return;
+  if(p1.length<6){msg.style.color='var(--neg)';msg.textContent='❌ Mínimo 6 caracteres';return;}
+  if(p1!==p2){msg.style.color='var(--neg)';msg.textContent='❌ No coinciden';return;}
+  if(!sb||!currentUser){msg.textContent='❌ No autenticado';return;}
+  msg.textContent='⏳ Guardando...';
+  sb.auth.updateUser({password:p1}).then(function(r){
+    if(r.error){msg.style.color='var(--neg)';msg.textContent='❌ '+r.error.message;}
+    else{msg.style.color='var(--pos)';msg.textContent='✅ Contraseña actualizada';
+      document.getElementById('chpwd-1').value='';
+      document.getElementById('chpwd-2').value='';}
+  });
+}
+function updPasswordCard(){
+  var c=document.getElementById('card-change-pwd');
+  if(c)c.style.display=(currentUser&&!isGuestMode)?'block':'none';
+}
+function showResetScreen(){
+  var t=window.__rp||{};
+  var rs=document.getElementById('reset-screen');if(rs)rs.style.display='flex';
+  var sp=document.getElementById('splash');if(sp)sp.style.display='none';
+  var app=document.getElementById('app');if(app)app.style.display='none';
+  if(t.access_token&&sb){
+    sb.auth.setSession({access_token:t.access_token,refresh_token:t.refresh_token||''})
+    .then(function(r){
+      if(r.error){var e=document.getElementById('reset-error');if(e){e.style.display='block';e.textContent='⚠️ '+r.error.message;}}
+      else{var f=document.getElementById('reset-pwd1');if(f)setTimeout(function(){f.focus();},300);}
+    });
+  }
+}
+function doResetPassword(){
+  var p1=document.getElementById('reset-pwd1').value;
+  var p2=document.getElementById('reset-pwd2').value;
+  var msg=document.getElementById('reset-msg');
+  var btn=document.getElementById('reset-btn');
+  if(p1.length<6){msg.style.color='var(--neg)';msg.textContent='❌ Mínimo 6 caracteres';return;}
+  if(p1!==p2){msg.style.color='var(--neg)';msg.textContent='❌ No coinciden';return;}
+  if(!sb){msg.textContent='❌ Sin conexión';return;}
+  btn.disabled=true;btn.textContent='⏳ Guardando...';
+  sb.auth.updateUser({password:p1})
+  .then(function(r){
+    if(r.error){msg.style.color='var(--neg)';msg.textContent='❌ '+r.error.message;btn.disabled=false;btn.textContent='💾 Guardar nueva contraseña';}
+    else{msg.style.color='var(--pos)';msg.textContent='✅ ¡Contraseña actualizada!';
+      history.replaceState(null,'',window.location.pathname);
+      setTimeout(function(){document.getElementById('reset-screen').style.display='none';showAuth('✅ Inicia sesión con tu nueva contraseña.');},1500);}
+  }).catch(function(e){msg.style.color='var(--neg)';msg.textContent='❌ '+(e.message||'Error');btn.disabled=false;btn.textContent='💾 Guardar nueva contraseña';});
+}
+// Recovery URL detection
+(function(){
+  try{
+    var h=window.location.hash||'';
+    if(h.indexOf('type=recovery')!==-1||(h.indexOf('access_token')!==-1&&h.indexOf('error=')===-1)){
+      var p={};h.slice(1).split('&').forEach(function(s){var a=s.indexOf('=');if(a>-1)p[s.slice(0,a)]=decodeURIComponent(s.slice(a+1));});
+      window.__rp=p;
+      var st=document.createElement('style');
+      st.textContent='#reset-screen{display:flex!important}#splash,#app{display:none!important}';
+      document.head.appendChild(st);
+      window.addEventListener('DOMContentLoaded',function(){showResetScreen();});
+    }
+  }catch(e){}
+})();
+
+
+// ══════════════════════════════════════
+// NUEVAS FUNCIONALIDADES v3.1
+// ══════════════════════════════════════
+
+// ── 🔔 NOTIFICACIONES DE PAGOS ──
+function checkPaymentAlerts(){
+  var today = new Date();
+  var alerts = [];
+  
+  D.b.forEach(function(b){
+    if(!b.esTarjeta) return;
+    // Fecha de corte
+    if(b.fCorte){
+      var parts = b.fCorte.split('-');
+      var cutDay = parseInt(parts[parts.length-1]);
+      var cutDate = new Date(today.getFullYear(), today.getMonth(), cutDay);
+      if(cutDate < today) cutDate.setMonth(cutDate.getMonth()+1);
+      var daysLeft = Math.ceil((cutDate - today)/(1000*60*60*24));
+      if(daysLeft <= 5 && daysLeft >= 0){
+        alerts.push({type:'corte', name: b.bn+(b.cta?' ••••'+b.cta:''), days: daysLeft, amount: b.saldoUSD||0});
+      }
+    }
+    // Fecha límite de pago
+    if(b.fPago){
+      var parts2 = b.fPago.split('-');
+      var payDay = parseInt(parts2[parts2.length-1]);
+      var payDate = new Date(today.getFullYear(), today.getMonth(), payDay);
+      if(payDate < today) payDate.setMonth(payDate.getMonth()+1);
+      var daysLeft2 = Math.ceil((payDate - today)/(1000*60*60*24));
+      if(daysLeft2 <= 7 && daysLeft2 >= 0){
+        alerts.push({type:'pago', name: b.bn+(b.cta?' ••••'+b.cta:''), days: daysLeft2, amount: b.saldoUSD||0});
+      }
+    }
+  });
+
+  D.d.forEach(function(d){
+    if(d.estado==='Pagado') return;
+    if(!d.f) return;
+    var dueDate = new Date(d.f);
+    var daysLeft = Math.ceil((dueDate - today)/(1000*60*60*24));
+    if(daysLeft <= 7 && daysLeft >= 0){
+      alerts.push({type:'deuda', name: d.desc||d.tipo, days: daysLeft, amount: d.mo||0});
+    }
+  });
+
+  return alerts;
+}
+
+function showPaymentAlerts(){
+  var alerts = checkPaymentAlerts();
+  var el = document.getElementById('payment-alerts');
+  if(!el) return;
+  if(!alerts.length){ el.style.display='none'; return; }
+  
+  el.style.display='block';
+  el.innerHTML = alerts.map(function(a){
+    var icon = a.type==='corte' ? '✂️' : a.type==='pago' ? '💳' : '⚠️';
+    var color = a.days <= 2 ? 'var(--neg)' : 'var(--acc)';
+    var bgColor = a.days <= 2 ? 'var(--neg-bg)' : 'var(--pill-bg)';
+    var bdrColor = a.days <= 2 ? 'var(--neg-bdr)' : 'var(--pill-bdr)';
+    var daysText = a.days === 0 ? 'HOY' : a.days === 1 ? 'mañana' : 'en '+a.days+' días';
+    return '<div style="background:'+bgColor+';border:1px solid '+bdrColor+';border-radius:10px;padding:8px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">'
+      +'<div><span style="font-size:12px">' + icon + ' <strong style="color:'+color+'">'+a.name+'</strong> — '
+      +(a.type==='corte'?'fecha de corte ':'fecha de pago ')+'<strong style="color:'+color+'">'+daysText+'</strong></div>'
+      +'<div style="font-size:12px;font-weight:700;color:'+color+'">'+fmt(a.amount)+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+// ── 🔍 BÚSQUEDA Y FILTROS ──
+var searchTerm = '';
+var searchFilter = 'all'; // all, ingresos, gastos
+
+function initSearch(){
+  var el = document.getElementById('search-input');
+  if(!el) return;
+  el.addEventListener('input', function(){
+    searchTerm = this.value.toLowerCase();
+    renderSearchResults();
+  });
+}
+
+function setSearchFilter(f){
+  searchFilter = f;
+  ['all','ingresos','gastos'].forEach(function(x){
+    var btn = document.getElementById('sf-'+x);
+    if(btn){
+      btn.style.background = x===f ? 'var(--acc)' : 'var(--btn-sec)';
+      btn.style.color = x===f ? 'var(--acc-text)' : 'var(--text2)';
+    }
+  });
+  renderSearchResults();
+}
+
+function renderSearchResults(){
+  var el = document.getElementById('search-results');
+  if(!el) return;
+  var term = searchTerm.trim();
+  if(!term){ el.innerHTML='<div class="empty" style="padding:20px;text-align:center">Escribe para buscar...</div>'; return; }
+  
+  var results = [];
+  if(searchFilter==='all'||searchFilter==='ingresos'){
+    D.i.forEach(function(x,i){
+      if((x.d&&x.d.toLowerCase().includes(term))||(x.cat&&x.cat.toLowerCase().includes(term))||(x.f&&x.f.includes(term))){
+        results.push({type:'💵',typeLabel:'Ingreso',color:'var(--pos)',item:x,idx:i,list:'i'});
+      }
+    });
+  }
+  if(searchFilter==='all'||searchFilter==='gastos'){
+    D.g.forEach(function(x,i){
+      if((x.d&&x.d.toLowerCase().includes(term))||(x.cat&&x.cat.toLowerCase().includes(term))||(x.f&&x.f.includes(term))){
+        results.push({type:'💸',typeLabel:'Gasto',color:'var(--neg)',item:x,idx:i,list:'g'});
+      }
+    });
+  }
+  
+  results.sort(function(a,b){ return (b.item.f||'').localeCompare(a.item.f||''); });
+  
+  if(!results.length){
+    el.innerHTML='<div class="empty" style="padding:20px;text-align:center">Sin resultados para "'+term+'"</div>';
+    return;
+  }
+  
+  el.innerHTML = results.map(function(r){
+    return '<div onclick="showDetail(''+r.list+'','+r.idx+')" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center">'
+      +'<div><div style="font-size:11px;color:var(--text3)">' + r.type + ' '+r.typeLabel+' · '+(r.item.f||'')+'</div>'
+      +'<div style="font-size:14px;font-weight:700;color:var(--text);margin-top:2px">'+(r.item.d||r.item.cat||'')+'</div>'
+      +(r.item.cat?'<div style="font-size:11px;color:var(--text2)">'+r.item.cat+'</div>':'')
+      +'</div>'
+      +'<div style="font-size:15px;font-weight:800;color:'+r.color+'">'+fmt(r.item.mo)+'</div>'
+      +'</div></div>';
+  }).join('');
+}
+
+// ── 💱 CONVERTIDOR USD↔DOP ──
+var convOpen = false;
+function togConv(){
+  convOpen = !convOpen;
+  var el = document.getElementById('conv-panel');
+  if(el) el.style.display = convOpen ? 'block' : 'none';
+  if(convOpen) document.getElementById('conv-input').focus();
+}
+function calcConv(){
+  var val = parseFloat(document.getElementById('conv-input').value)||0;
+  var dir = document.getElementById('conv-dir').value;
+  var rate = parseFloat(localStorage.getItem('gestorrd_rate'))||60;
+  var result = dir==='usd2dop' ? val*rate : val/rate;
+  var fromCur = dir==='usd2dop' ? 'USD' : 'DOP';
+  var toCur = dir==='usd2dop' ? 'DOP' : 'USD';
+  document.getElementById('conv-result').textContent = 
+    (val>0 ? val.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' '+fromCur+' = '+result.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' '+toCur : '');
+}
+
+// ── 🎯 METAS DE AHORRO ──
+function updAhorrosMetas(){
+  var el = document.getElementById('metas-list');
+  if(!el) return;
+  if(!D.a||!D.a.length){ el.innerHTML='<div class="empty">Sin ahorros registrados</div>'; return; }
+  
+  el.innerHTML = D.a.map(function(a,i){
+    var meta = a.meta || 0;
+    var actual = a.bal || 0;
+    var pct = meta > 0 ? Math.min(100, Math.round(actual/meta*100)) : 0;
+    var color = pct>=100?'var(--pos)':pct>=50?'var(--acc)':'var(--neg)';
+    if(!meta) return '';
+    return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px">'
+      +'<div style="display:flex;justify-content:space-between;margin-bottom:6px">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--text)">🎯 '+a.bn+'</div>'
+      +'<div style="font-size:12px;color:'+color+';font-weight:700">'+pct+'%</div>'
+      +'</div>'
+      +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:8px">'
+      +'<span>'+fmt(actual)+' ahorrado</span><span>Meta: '+fmt(meta)+'</span>'
+      +'</div>'
+      +'<div style="background:var(--border);border-radius:6px;height:8px;overflow:hidden">'
+      +'<div style="background:'+color+';height:100%;width:'+pct+'%;border-radius:6px;transition:width .5s"></div>'
+      +'</div>'
+      +(pct>=100?'<div style="font-size:11px;color:var(--pos);font-weight:700;margin-top:6px;text-align:center">🎉 ¡Meta alcanzada!</div>':'')
+      +'</div>';
+  }).filter(Boolean).join('') || '<div class="empty">Agrega una meta a tus ahorros</div>';
+}
+
+// ── 📊 COMPARAR MESES ──
+function updComparacion(){
+  var el = document.getElementById('comp-section');
+  if(!el) return;
+  
+  var now = new Date();
+  var curM = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  var prevDate = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  var prevM = prevDate.getFullYear()+'-'+String(prevDate.getMonth()+1).padStart(2,'0');
+  var MES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  var curLbl = MES[now.getMonth()]+' '+now.getFullYear();
+  var prevLbl = MES[prevDate.getMonth()]+' '+prevDate.getFullYear();
+  
+  var curI = D.i.filter(function(x){return x.f&&x.f.startsWith(curM);}).reduce(function(s,x){return s+x.mo;},0);
+  var curG = D.g.filter(function(x){return x.f&&x.f.startsWith(curM);}).reduce(function(s,x){return s+x.mo;},0);
+  var prevI = D.i.filter(function(x){return x.f&&x.f.startsWith(prevM);}).reduce(function(s,x){return s+x.mo;},0);
+  var prevG = D.g.filter(function(x){return x.f&&x.f.startsWith(prevM);}).reduce(function(s,x){return s+x.mo;},0);
+  
+  function diff(cur, prev){ 
+    if(!prev) return '';
+    var pct = Math.round((cur-prev)/prev*100);
+    var arrow = pct>0?'↑':'↓';
+    var color = pct>0?'var(--pos)':'var(--neg)';
+    return '<span style="font-size:11px;color:'+color+';margin-left:6px">'+arrow+Math.abs(pct)+'%</span>';
+  }
+  
+  el.innerHTML = '<div class="ct" style="margin-bottom:12px">📊 Comparación mensual</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+    +'<div style="background:var(--bg3);border-radius:10px;padding:10px;text-align:center">'
+    +'<div style="font-size:11px;color:var(--text2);margin-bottom:4px">'+prevLbl+'</div>'
+    +'<div style="font-size:12px;color:var(--pos)">💵 '+fmt(prevI)+'</div>'
+    +'<div style="font-size:12px;color:var(--neg)">💸 '+fmt(prevG)+'</div>'
+    +'</div>'
+    +'<div style="background:var(--pill-bg);border:1px solid var(--pill-bdr);border-radius:10px;padding:10px;text-align:center">'
+    +'<div style="font-size:11px;color:var(--text2);margin-bottom:4px">'+curLbl+' (actual)</div>'
+    +'<div style="font-size:12px;color:var(--pos)">💵 '+fmt(curI)+diff(curI,prevI)+'</div>'
+    +'<div style="font-size:12px;color:var(--neg)">💸 '+fmt(curG)+diff(curG,prevG)+'</div>'
+    +'</div>'
+    +'</div>';
+}
+
+// ── 🔁 GASTOS FIJOS (Repetir) ──
+function initGastosFijos(){
+  var el = document.getElementById('gastos-fijos-list');
+  if(!el) return;
+  var fixed = JSON.parse(localStorage.getItem('gestorrd_fixed')||'[]');
+  if(!fixed.length){ el.innerHTML='<div class="empty">Sin gastos fijos configurados</div>'; return; }
+  el.innerHTML = fixed.map(function(f,i){
+    return '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">'
+      +'<div><div style="font-size:13px;font-weight:700;color:var(--text)">'+f.desc+'</div>'
+      +'<div style="font-size:11px;color:var(--text2)">'+f.cat+' · Día '+f.dia+' de cada mes</div></div>'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +'<div style="font-size:14px;font-weight:800;color:var(--neg)">'+fmt(f.mo)+'</div>'
+      +'<button onclick="applyGastoFijo('+i+')" style="background:var(--acc);color:var(--acc-text);border:none;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer">Aplicar</button>'
+      +'<button onclick="delGastoFijo('+i+')" style="background:var(--neg-bg);color:var(--neg);border:1px solid var(--neg-bdr);border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer">✕</button>'
+      +'</div></div>';
+  }).join('');
+}
+
+function saveGastoFijo(){
+  var desc = (document.getElementById('gf-desc')||{}).value||'';
+  var cat = (document.getElementById('gf-cat')||{}).value||'Otros';
+  var mo = parseFloat((document.getElementById('gf-mo')||{}).value)||0;
+  var dia = parseInt((document.getElementById('gf-dia')||{}).value)||1;
+  if(!desc||!mo){toast('Completa descripción y monto');return;}
+  var fixed = JSON.parse(localStorage.getItem('gestorrd_fixed')||'[]');
+  fixed.push({desc:desc,cat:cat,mo:mo,dia:dia});
+  localStorage.setItem('gestorrd_fixed', JSON.stringify(fixed));
+  document.getElementById('gf-desc').value='';
+  document.getElementById('gf-mo').value='';
+  initGastosFijos();
+  toast('Gasto fijo guardado ✓');
+}
+
+function applyGastoFijo(i){
+  var fixed = JSON.parse(localStorage.getItem('gestorrd_fixed')||'[]');
+  var f = fixed[i];
+  if(!f) return;
+  var today = new Date();
+  var dateStr = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  D.g.push({f:dateStr,cat:f.cat,d:f.desc,mo:f.mo,mon:'USD',p:'Efectivo'});
+  rnG();updD();saveD();
+  toast('✓ Gasto aplicado: '+f.desc);
+}
+
+function delGastoFijo(i){
+  var fixed = JSON.parse(localStorage.getItem('gestorrd_fixed')||'[]');
+  fixed.splice(i,1);
+  localStorage.setItem('gestorrd_fixed', JSON.stringify(fixed));
+  initGastosFijos();
+}
+
 </script>
 </body>
+</html>
