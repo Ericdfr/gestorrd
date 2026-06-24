@@ -558,18 +558,6 @@ if (false && 'serviceWorker' in navigator) {
   </div>
 
   
-    <div class="card" style="margin-top:10px">
-      <div class="ct">🔁 Gastos fijos mensuales</div>
-      <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-        <div class="f"><label>Descripción</label><input type="text" id="gf-desc" placeholder="Ej: Netflix, Gimnasio..."></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div class="f"><label>Monto USD</label><input type="number" id="gf-mo" placeholder="0.00"></div>
-          <div class="f"><label>Día del mes</label><input type="number" id="gf-dia" placeholder="1-31" min="1" max="31"></div>
-        </div>
-        <button class="btn" onclick="saveGastoFijo()">💾 Guardar gasto fijo</button>
-      </div>
-      <div id="gastos-fijos-list" style="margin-top:12px"></div>
-    </div>
 
   <div id="tab-deudas" class="sec">
     <div class="card"><div class="ct">➕ Agregar deuda</div>
@@ -682,7 +670,26 @@ if (false && 'serviceWorker' in navigator) {
     <div class="card"><div class="ct">🏦 Mis cuentas</div><div id="bList"><div class="empty">Sin cuentas</div></div></div>
   </div>
 
-  <div <div id="tab-busqueda" class="sec">
+  <div <div id="tab-herramientas" class="sec">
+  <div class="card">
+    <div class="ct">🔁 Gastos fijos mensuales</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Guarda gastos mensuales y aplícalos con un toque.</div>
+    <div class="f"><label>Descripción</label><input type="text" id="gf-desc" placeholder="Ej: Netflix, Gimnasio..."></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="f"><label>Monto USD</label><input type="number" id="gf-mo" placeholder="0.00"></div>
+      <div class="f"><label>Día del mes</label><input type="number" id="gf-dia" placeholder="1-31" min="1" max="31"></div>
+    </div>
+    <button class="btn" onclick="saveGastoFijo()">💾 Guardar gasto fijo</button>
+    <div id="gastos-fijos-list" style="margin-top:12px"></div>
+  </div>
+  <div class="card">
+    <div class="ct">🎯 Metas de ahorro</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Progreso visual hacia tus metas de ahorro.</div>
+    <div id="metas-list"></div>
+  </div>
+</div>
+
+<div id="tab-busqueda" class="sec">
   <div class="card">
     <div class="ct">🔍 Buscar transacciones</div>
     <div style="display:flex;gap:8px;margin-bottom:12px">
@@ -718,11 +725,6 @@ id="tab-ahorros" class="sec">
   </div>
 
   
-    <div class="card" style="margin-top:10px">
-      <div class="ct">🎯 Metas de ahorro</div>
-      <div id="metas-list" style="margin-top:8px"></div>
-      <div style="font-size:11px;color:var(--text2);margin-top:8px">💡 Agrega una "Meta" a tus cuentas de ahorro para ver el progreso.</div>
-    </div>
 
   <div id="tab-presupuesto" class="sec">
     <div class="card"><div class="ct">📊 Presupuesto mensual</div>
@@ -962,6 +964,7 @@ id="tab-ahorros" class="sec">
 <div class="more-overlay" id="more-overlay" onclick="closeMoreMenu()"></div>
 <div class="more-menu" id="more-menu">
   <button class="more-btn" id="nb-presupuesto" onclick="sN('presupuesto');closeMoreMenu()"><span>📊</span>Presupuesto</button>
+  <button class="more-btn" onclick="sN('herramientas');initGastosFijos();updAhorrosMetas();closeMoreMenu()"><span>🛠️</span>Herramientas</button>
   <button class="more-btn" onclick="sN('busqueda');initSearch();closeMoreMenu()"><span>🔍</span>Búsqueda</button>
   <button class="more-btn" onclick="sN('ahorros');closeMoreMenu()"><span>🐷</span>Ahorros</button>
   <button class="more-btn" onclick="sN('calculadora');closeMoreMenu()"><span>🧮</span>Calc.</button>
@@ -1096,8 +1099,6 @@ function launch(skipTour){
   updD();
   showPaymentAlerts();
   initSearch();
-  initGastosFijos();
-  updAhorrosMetas();
   updComparacion();
 }
 function sN(n){document.querySelectorAll('.sec').forEach(function(s){s.classList.remove('active');});document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});document.querySelectorAll('.nb').forEach(function(b){b.classList.remove('active');});document.getElementById('tab-'+n).classList.add('active');if(document.getElementById('nb-'+n))document.getElementById('nb-'+n).classList.add('active');var moreSecs=['gastos','ahorros','calculadora','resumen','novedades','sugerencias','ajustes','admin'];if(moreSecs.indexOf(n)>-1){var mb=document.getElementById('nb-more');if(mb)mb.classList.add('active');}var m={dashboard:0,ingresos:1,gastos:2,deudas:3,bancos:4,ahorros:5,presupuesto:6,calculadora:7,ajustes:8,sugerencias:9,novedades:10,resumen:11};if(m[n]!==undefined)document.querySelectorAll('.tab')[m[n]].classList.add('active');if(n==='dashboard')updD();if(n==='presupuesto')rnBud();if(n==='ajustes')updBackupStatus();if(n==='resumen')updResumen();if(n==='admin')loadAdminPanel();}
