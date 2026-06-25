@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="GestorRD">
@@ -163,7 +163,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .tbtn.skip{background:var(--border);color:var(--text2)}
 .tbtn.next{background:var(--btn-bg);color:white}
 #app{display:none;flex-direction:column;height:100%;overflow:hidden}
-.sbar{background:var(--bg);padding:env(safe-area-inset-top,14px) 16px 10px;display:flex;justify-content:space-between;align-items:center;color:var(--text);font-size:13px;flex-shrink:0}
+.sbar{padding-top:env(safe-area-inset-top);background:var(--bg);padding:env(safe-area-inset-top,14px) 16px 10px;display:flex;justify-content:space-between;align-items:center;color:var(--text);font-size:13px;flex-shrink:0}
 .appname{font-size:16px;font-weight:800;background:linear-gradient(135deg,#d4b896,#6a9ab8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .topbar{background:var(--card);padding:12px 14px 14px;flex-shrink:0}
 .sum3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;background:var(--card);padding:0 14px 14px;flex-shrink:0}
@@ -177,7 +177,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .tabs::-webkit-scrollbar{display:none}
 .tab{flex-shrink:0;padding:10px 11px;font-size:11px;color:var(--text2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-weight:600}
 .tab.active{color:var(--acc);border-bottom-color:var(--acc)}
-.sec{display:none;padding:12px 14px;padding-bottom:90px;gap:10px;flex-direction:column;overflow-y:auto;background:var(--bg);flex:1;-webkit-overflow-scrolling:touch}
+.sec{display:none;padding:12px 14px;padding-bottom:90px;gap:10px;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;height:calc(100vh - 120px);background:var(--bg);flex:1;-webkit-overflow-scrolling:touch}
 .sec.active{display:flex}
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:13px}
 .ct{font-size:12px;color:var(--text2);margin-bottom:9px;font-weight:700}
@@ -2860,6 +2860,41 @@ function applyMode(){
   });
   var sub=document.getElementById('region-sub');
   if(sub)sub.textContent=appMode==='rd'?'🇩🇴 Solo República Dominicana':appMode==='us'?'🇺🇸 Solo Estados Unidos':'🌎 USA + República Dominicana';
+
+  // Update placeholders based on mode
+  var isRD=appMode==='rd', isUS=appMode==='us';
+  var monSymbol = isRD ? 'RD$' : '$';
+  var monExample = isRD ? 'RD$1,000' : '$500';
+  var bankExample = isRD ? 'Ej: BHD León, Banreservas' : 'Ej: Chase, Bank of America';
+  var accountExample = isRD ? 'Ej: Cuenta de Ahorros BHD' : 'Ej: Chase Checking';
+  var incomeExample = isRD ? 'Ej: Salario, Negocio' : 'Ej: Salary, Freelance';
+  
+  // Bank name placeholder
+  var bnEl = document.getElementById('bbn');
+  if(bnEl) bnEl.placeholder = bankExample;
+  
+  // Account name placeholder  
+  var baEl = document.getElementById('ban');
+  if(baEl) baEl.placeholder = accountExample;
+  
+  // Income source placeholder
+  var ifuEl = document.getElementById('ifu');
+  if(ifuEl) ifuEl.placeholder = incomeExample;
+  
+  // Amount placeholders
+  ['imo','gmo','dmo','bbal','ahbal'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.placeholder = isRD ? 'RD$0.00' : '0.00';
+  });
+
+  // Hide USD-only fields in RD mode, DOP-only in US mode
+  document.querySelectorAll('.usa-only').forEach(function(el){
+    el.style.display = isRD ? 'none' : '';
+  });
+  document.querySelectorAll('.rd-only').forEach(function(el){
+    el.style.display = isUS ? 'none' : '';
+  });
+
 }
 
 
