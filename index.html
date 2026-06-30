@@ -2417,9 +2417,10 @@ function closeSheet() {
   var ov = document.getElementById('sheet-overlay');
   if (sh) sh.style.display = 'none';
   if (ov) ov.classList.remove('open');
-  // Reset wizard state on every close so stale step never bleeds into next open
+  // Reset ALL sheet state so nothing bleeds into the next open
   _wgStep = 1; _wgMonto = 0; _wgDesc = ''; _wgFecha = '';
   _selCat = ''; _selSource = ''; _gastoMon = 'USD';
+  _iaHistory = []; _iaBusy = false;
 }
 
 // ─── SHEET BUILDERS ───────────────────────────────────────
@@ -3170,52 +3171,103 @@ function sendIAMessage() {
   _iaHistory.push({ role: 'user', content: msg });
   _iaBusy = true;
 
-  // Build financial context for the AI
-  var cur = DATA.curMonth, curY = DATA.curYear;
-  var curGas = (DATA.gastos||[]).filter(function(x){ return x.month===cur&&x.year===curY; });
-  var curIngs = (DATA.ingresos||[]).filter(function(x){ return x.month===cur&&x.year===curY; });
-  var tI = curIngs.reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
-  var tG = curGas.reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
-  var tB = (DATA.bancos||[]).reduce(function(a,b){ return a+toUSD(b.bal||0,b.mon); }, 0);
-  var tD = (DATA.deudas||[]).filter(function(d){ return d.estado!=='Pagado'; }).reduce(function(a,d){ return a+toUSD(d.bal||0,d.mon); }, 0);
-  var metas = (DATA.metas||[]).map(function(m){ return m.nom + ': ' + fmt(m.actual||0) + '/' + fmt(m.meta||0); }).join(', ') || 'Ninguna';
-  var cats = {};
-  curGas.forEach(function(g){ cats[g.cat]=(cats[g.cat]||0)+toUSD(g.monto,g.mon); });
-  var topCat = Object.keys(cats).sort(function(a,b){ return cats[b]-cats[a]; }).slice(0,3).map(function(k){ return k+': '+fmt(cats[k]); }).join(', ') || 'Sin datos';
-  var contexto = 'Eres un asesor financiero personal para GestorRD. El usuario tiene estos datos este mes: Ingresos: ' + fmt(tI) + ', Gastos: ' + fmt(tG) + ', Saldo en cuentas: ' + fmt(tB) + ', Deudas activas: ' + fmt(tD) + '. Top categorías de gasto: ' + topCat + '. Metas de ahorro: ' + metas + '. Responde en español, de forma directa, concreta y amigable. Máximo 3-4 oraciones.';
-
-  // Re-render with typing indicator
+  // Show typing indicator
+  _iaHistory.push({ role: 'assistant', content: '<span style="color:var(--t3)">Analizando... ⏳</span>' });
   var msgsEl = document.getElementById('ia-msgs');
-  if (msgsEl) {
-    _iaHistory.push({ role: 'assistant', content: '<span style="color:var(--t3)">Analizando... ⏳</span>' });
-    var tmpHtml = _iaHistory.map(function(m){
-      var isUser = m.role==='user';
-      return '<div style="display:flex;justify-content:' + (isUser?'flex-end':'flex-start') + ';margin-bottom:10px"><div style="max-width:82%;padding:10px 14px;border-radius:' + (isUser?'18px 18px 4px 18px':'18px 18px 18px 4px') + ';background:' + (isUser?'var(--gold-dim)':'var(--surface)') + ';border:1px solid ' + (isUser?'rgba(201,169,110,0.3)':'var(--border)') + ';font-size:14px;color:var(--t1);line-height:1.5">' + m.content + '</div></div>';
+  function renderMsgs() {
+    if (!msgsEl) return;
+    msgsEl.innerHTML = _iaHistory.map(function(m){
+      var isUser = m.role === 'user';
+      return '<div style="display:flex;justify-content:' + (isUser?'flex-end':'flex-start') + ';margin-bottom:10px">' +
+        '<div style="max-width:82%;padding:10px 14px;border-radius:' + (isUser?'18px 18px 4px 18px':'18px 18px 18px 4px') + ';background:' + (isUser?'var(--gold-dim)':'var(--surface)') + ';border:1px solid ' + (isUser?'rgba(201,169,110,0.3)':'var(--border)') + ';font-size:14px;color:var(--t1);line-height:1.5">' + m.content + '</div></div>';
     }).join('');
-    msgsEl.innerHTML = tmpHtml;
     msgsEl.scrollTop = msgsEl.scrollHeight;
   }
+  renderMsgs();
 
-  var messages = [{ role: 'user', content: contexto + '\n\nPregunta: ' + msg }];
-  fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 300, messages: messages })
-  }).then(function(r){ return r.json(); }).then(function(data){
-    var reply = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text.trim() : 'No pude generar una respuesta. Intenta de nuevo.';
-    // Replace the typing indicator with real response
-    _iaHistory[_iaHistory.length-1].content = reply;
+  // Local AI engine — analyze DATA and respond intelligently (no external API needed)
+  setTimeout(function() {
+    var reply = _localAIAnswer(msg);
+    _iaHistory[_iaHistory.length - 1].content = reply;
     _iaBusy = false;
     var sheet = document.querySelector('.bottom-sheet');
     if (sheet) sheet.innerHTML = buildIASheet();
     var m2 = document.getElementById('ia-msgs');
     if (m2) m2.scrollTop = m2.scrollHeight;
-  }).catch(function(){
-    _iaHistory[_iaHistory.length-1].content = '⚠️ Sin conexión. Revisa internet e intenta de nuevo.';
-    _iaBusy = false;
-    var sheet = document.querySelector('.bottom-sheet');
-    if (sheet) sheet.innerHTML = buildIASheet();
-  });
+  }, 600);
+}
+
+function _localAIAnswer(msg) {
+  var cur = DATA.curMonth, curY = DATA.curYear;
+  var curGas  = (DATA.gastos||[]).filter(function(x){ return x.month===cur && x.year===curY; });
+  var curIngs = (DATA.ingresos||[]).filter(function(x){ return x.month===cur && x.year===curY; });
+  var tI = curIngs.reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
+  var tG = curGas.reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
+  var tB = (DATA.bancos||[]).reduce(function(a,b){ return !b.esTarjeta?a+toUSD(b.bal||0,b.mon):a; }, 0);
+  var tD = (DATA.deudas||[]).filter(function(d){ return d.estado!=='Pagado'; }).reduce(function(a,d){ return a+toUSD(d.bal||0,d.mon); }, 0);
+  var net = tI - tG;
+  var cats = {};
+  curGas.forEach(function(g){ cats[g.cat||'Otros']=(cats[g.cat||'Otros']||0)+toUSD(g.monto,g.mon); });
+  var sortedCats = Object.keys(cats).sort(function(a,b){ return cats[b]-cats[a]; });
+  var topCat = sortedCats[0] || null;
+  var mL = msg.toLowerCase();
+
+  // Detect question intent and answer specifically
+  if (mL.includes('gasté más') || mL.includes('gaste mas') || mL.includes('mayor gasto')) {
+    if (!topCat) return '📊 Aún no tienes gastos registrados este mes. ¡Empieza a registrarlos para ver tu análisis!';
+    var top3 = sortedCats.slice(0,3).map(function(k,i){ return (i+1)+'. '+k+': '+fmt(cats[k]); }).join('\n');
+    return '📊 Tu mayor gasto este mes es **' + topCat + '** con ' + fmt(cats[topCat]) + ', que representa el ' + (tG>0?Math.round(cats[topCat]/tG*100):0) + '% de tus gastos totales.\n\nTop 3:\n' + top3;
+  }
+  if (mL.includes('ahorrar') || mL.includes('ahorro')) {
+    if (tI === 0) return '💡 Registra tus ingresos primero para que pueda darte recomendaciones de ahorro personalizadas.';
+    var savRate = tI > 0 ? Math.round((net/tI)*100) : 0;
+    var canSave = Math.max(0, net * 0.2);
+    if (net <= 0) return '⚠️ Este mes estás gastando más de lo que ingresas (' + fmt(Math.abs(net)) + ' de déficit). Prioriza reducir ' + (topCat||'tus gastos principales') + ' para volver a equilibrio.';
+    return '💰 Estás ahorrando el ' + savRate + '% de tus ingresos este mes. Lo ideal es llegar al 20%.\n\n' + (savRate < 20 ? 'Podrías ahorrar ' + fmt(canSave) + ' adicionales reduciendo ' + (topCat||'gastos variables') + '.' : '¡Vas muy bien! Mantén ese ritmo y considera invertir el excedente.');
+  }
+  if (mL.includes('carro') || mL.includes('coche') || mL.includes('auto') || mL.includes('vehiculo') || mL.includes('vehículo')) {
+    var precio = 15000;
+    if (net > 0) {
+      var meses = Math.ceil(precio * 0.2 / (net * 0.3));
+      return '🚗 Para el inicial de un vehículo (~$3,000–$5,000 USD) ahorrando el 30% de tu excedente mensual (' + fmt(net*0.3) + '), necesitarías aproximadamente ' + meses + ' meses.\n\nTu balance actual: ' + fmt(tB) + '. ' + (tB >= 3000 ? '¡Ya tienes suficiente para el inicial!' : 'Faltan ' + fmt(3000 - tB) + ' para llegar al mínimo.');
+    }
+    return '🚗 Actualmente tus gastos superan tus ingresos. Recomiendo equilibrar tu presupuesto antes de asumir una deuda de vehículo.';
+  }
+  if (mL.includes('deuda') || mL.includes('préstamo') || mL.includes('prestamo') || mL.includes('pagar')) {
+    if (tD === 0) return '✅ ¡Excelente! No tienes deudas activas registradas. Sigue así.';
+    var mesesDeuda = net > 0 ? Math.ceil(tD / (net * 0.4)) : 0;
+    return '💳 Tienes ' + fmt(tD) + ' en deudas activas.' + (mesesDeuda > 0 ? ' Destinando el 40% de tu excedente mensual (' + fmt(net*0.4) + '), podrías quedar libre de deudas en ~' + mesesDeuda + ' meses.' : ' Necesitas generar excedente mensual para crear un plan de pago.');
+  }
+  if (mL.includes('meta') || mL.includes('objetivo') || mL.includes('cuánto me falta') || mL.includes('cuanto me falta')) {
+    var metas2 = (DATA.metas||[]).filter(function(m){ return (m.actual||0) < (m.meta||0); });
+    if (!metas2.length) return '🎯 No tienes metas de ahorro activas. Crea una en el menú ➕ → Meta.';
+    var resp = '🎯 Tus metas activas:\n\n';
+    metas2.slice(0,3).forEach(function(m){
+      var falta = (m.meta||0) - (m.actual||0);
+      var mesesMeta = net > 0 ? Math.ceil(falta / (net * 0.3)) : 0;
+      resp += '• ' + m.nom + ': faltan ' + fmt(falta, m.mon) + (mesesMeta > 0 ? ' (~' + mesesMeta + ' meses)' : '') + '\n';
+    });
+    return resp;
+  }
+  if (mL.includes('presupuesto') || mL.includes('límite') || mL.includes('limite')) {
+    var presup = (DATA.presupuesto||[]);
+    if (!presup.length) return '📊 No tienes presupuestos configurados. Ve a ➕ → Presupuesto para definir límites por categoría.';
+    var alertas = presup.filter(function(p){
+      var gCat = curGas.filter(function(g){ return g.cat===p.cat; }).reduce(function(a,g){ return a+toUSD(g.monto,g.mon); }, 0);
+      return gCat >= toUSD(p.lim,p.mon) * 0.8;
+    });
+    if (!alertas.length) return '✅ Todos tus presupuestos están bajo control este mes. ¡Sigue así!';
+    return '⚠️ ' + alertas.length + ' categoría(s) cerca del límite:\n' + alertas.map(function(p){ return '• ' + p.cat; }).join('\n');
+  }
+  if (mL.includes('balance') || mL.includes('saldo') || mL.includes('cómo estoy') || mL.includes('como estoy') || mL.includes('resumen')) {
+    var emoji = net >= 0 ? '✅' : '⚠️';
+    return emoji + ' **Resumen de ' + ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][cur] + ':**\n\n• Ingresos: ' + fmt(tI) + '\n• Gastos: ' + fmt(tG) + '\n• Balance: ' + (net>=0?'+':'') + fmt(net) + '\n• Saldo en cuentas: ' + fmt(tB) + '\n• Deudas activas: ' + fmt(tD) + '\n\n' + (net >= 0 ? 'Vas bien este mes.' : 'Estás en déficit. Revisa tus gastos en ' + (topCat||'las categorías principales') + '.');
+  }
+  // Generic fallback with actual data
+  if (tI === 0 && tG === 0) {
+    return '👋 ¡Hola! Aún no tienes movimientos registrados este mes. Registra tus ingresos y gastos para que pueda darte análisis personalizados.\n\nPuedes preguntar sobre: gastos, ahorros, deudas, metas o tu balance general.';
+  }
+  return '📊 Este mes llevas ' + fmt(tI) + ' en ingresos y ' + fmt(tG) + ' en gastos. Tu balance es ' + (net>=0?'+':'') + fmt(net) + '. ' + (topCat ? 'Tu mayor gasto: ' + topCat + ' (' + fmt(cats[topCat]) + ').' : '') + '\n\nPuedes preguntarme sobre: ahorros, deudas, metas, presupuesto o si puedes comprar algo específico.';
 }
 
 // ─── IMPORTAR CSV ───────────────────────────────────────────
