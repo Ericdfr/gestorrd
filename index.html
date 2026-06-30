@@ -537,6 +537,44 @@ input, select, textarea, button { font-family: inherit; }
 .balance-change.up { color: var(--green); }
 .balance-change.down { color: var(--red); }
 
+/* Home mini cards: patrimonio + predicción */
+.home-mini-row { display: flex; gap: 10px; margin: 0 16px 12px; }
+.home-mini-card {
+  flex: 1; background: var(--g-card); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 14px 14px; cursor: pointer;
+  transition: border-color 0.15s;
+}
+.home-mini-card:active { border-color: var(--border2); }
+.home-mini-label { font-size: 11px; color: var(--t2); font-weight: 600; margin-bottom: 6px; }
+.home-mini-val { font-size: 19px; font-weight: 800; color: var(--t1); letter-spacing: -0.01em; margin-bottom: 3px; }
+.home-mini-sub { font-size: 11px; color: var(--t3); font-weight: 600; }
+
+/* Quick access row */
+.quick-access-row { display: flex; gap: 8px; margin: 0 16px 12px; }
+.quick-access-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 12px 4px; cursor: pointer;
+  color: var(--t1); font-size: 11px; font-weight: 600;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.quick-access-btn:active { transform: scale(0.95); border-color: var(--gold); }
+.qa-icon { font-size: 20px; }
+
+/* Achievements strip */
+.achv-strip {
+  display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  margin: 0 0 12px; padding: 0 16px;
+}
+.achv-strip::-webkit-scrollbar { display: none; }
+.achv-chip {
+  flex-shrink: 0; display: flex; align-items: center; gap: 6px;
+  background: var(--gold-dim); border: 1px solid var(--gold-glow);
+  border-radius: 20px; padding: 7px 12px;
+  font-size: 11px; font-weight: 700; color: var(--gold); white-space: nowrap;
+}
+.achv-chip.locked { background: var(--bg3); border-color: var(--border); color: var(--t3); opacity: 0.6; }
+
 /* Donut chart */
 .donut-row { display: flex; align-items: center; gap: 16px; }
 .donut-wrap { position: relative; width: 88px; height: 88px; flex-shrink: 0; }
@@ -1058,6 +1096,31 @@ canvas { max-width: 100%; display: block; }
         <button onclick="chM(1)" style="background:none;border:none;color:var(--t2);font-size:22px;cursor:pointer;padding:0 4px">›</button>
       </div>
 
+      <!-- Net worth + Prediction -->
+      <div class="home-mini-row">
+        <div class="home-mini-card" onclick="sN('reportes')">
+          <div class="home-mini-label">Patrimonio neto</div>
+          <div class="home-mini-val" id="home-networth">$0</div>
+          <div class="home-mini-sub" id="home-networth-chg">—</div>
+        </div>
+        <div class="home-mini-card" onclick="sN('reportes')">
+          <div class="home-mini-label">Estimado fin de mes</div>
+          <div class="home-mini-val" id="home-predict">$0</div>
+          <div class="home-mini-sub" id="home-predict-sub">—</div>
+        </div>
+      </div>
+
+      <!-- Quick access -->
+      <div class="quick-access-row">
+        <button class="quick-access-btn" onclick="openSheet('add-gasto')"><span class="qa-icon">💸</span>Gasto</button>
+        <button class="quick-access-btn" onclick="openSheet('add-ingreso')"><span class="qa-icon">💵</span>Ingreso</button>
+        <button class="quick-access-btn" onclick="sN('cuentas')"><span class="qa-icon">🎯</span>Metas</button>
+        <button class="quick-access-btn" onclick="sN('reportes')"><span class="qa-icon">📈</span>Reportes</button>
+      </div>
+
+      <!-- Achievements strip -->
+      <div class="achv-strip" id="achv-strip"></div>
+
       <!-- AI insights -->
       <div class="ai-card" id="ai-card">
         <div class="ai-header">
@@ -1486,11 +1549,113 @@ var AI = {
       insights.push('Tus deudas superan 3 meses de ingresos. Considera un plan de pago.');
     }
 
+    // Best month ever check (personality)
+    var netThis = tI - tG;
+    if (!DATA.bestMonthNet || netThis > DATA.bestMonthNet) {
+      if (DATA.bestMonthNet !== undefined && netThis > 0) {
+        insights.unshift('🎉 ¡Este es tu mejor mes registrado hasta ahora!');
+      }
+      DATA.bestMonthNet = netThis;
+      save();
+    }
+
     if (insights.length === 0) {
       insights.push('Sigue registrando para ver más análisis personalizados.');
     }
 
     return { insights: insights, canSpend: safeSpend, tI: tI, tG: tG };
+  }
+};
+
+// ─── NET WORTH + PREDICTION ENGINE ────────────────────────
+var NETWORTH = {
+  run: function() {
+    var activos = DATA.bancos.filter(function(b){ return !b.esTarjeta; }).reduce(function(a,b){ return a+toUSD(b.bal||0,b.mon); }, 0)
+      + DATA.ahorros.reduce(function(a,x){ return a+toUSD(x.actual,x.mon); }, 0);
+    var pasivos = DATA.deudas.filter(function(d){ return d.estado!=='Pagado'; }).reduce(function(a,d){ return a+toUSD(d.bal||0,d.mon); }, 0);
+    var patri = activos - pasivos;
+
+    // Compare vs last month's snapshot (stored in DATA.networthHist)
+    var key = DATA.curYear + '-' + DATA.curMonth;
+    if (!DATA.networthHist) DATA.networthHist = {};
+    DATA.networthHist[key] = patri;
+    var prevM = DATA.curMonth === 0 ? 11 : DATA.curMonth - 1;
+    var prevY = DATA.curMonth === 0 ? DATA.curYear - 1 : DATA.curYear;
+    var prevKey = prevY + '-' + prevM;
+    var prevPatri = DATA.networthHist[prevKey];
+
+    return { activos: activos, pasivos: pasivos, patri: patri, prevPatri: prevPatri };
+  }
+};
+
+var PREDICT = {
+  run: function() {
+    var cur = DATA.curMonth, curY = DATA.curYear;
+    var curIngs = DATA.ingresos.filter(function(x){ return x.month===cur && x.year===curY; });
+    var curGas  = DATA.gastos.filter(function(x){ return x.month===cur && x.year===curY; });
+    var tI = curIngs.reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
+    var tG = curGas.reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
+    var tBan = DATA.bancos.filter(function(b){ return !b.esTarjeta; }).reduce(function(a,b){ return a+toUSD(b.bal||0,b.mon); }, 0);
+
+    var now = new Date();
+    var isCurrentMonth = (now.getMonth()===cur && now.getFullYear()===curY);
+    var daysInMonth = new Date(curY, cur+1, 0).getDate();
+    var daysPassed = isCurrentMonth ? Math.max(1, now.getDate()) : daysInMonth;
+    var daysLeft = isCurrentMonth ? Math.max(0, daysInMonth - daysPassed) : 0;
+
+    var dailyIncome = tI / daysPassed;
+    var dailySpend  = tG / daysPassed;
+    var projectedIncome = tI + dailyIncome * daysLeft;
+    var projectedSpend  = tG + dailySpend * daysLeft;
+    var projectedAvail  = (tBan > 0 ? tBan : 0) + (projectedIncome - tI) - (projectedSpend - tG);
+    var overBudgetRisk = false;
+    var totalBudgetLim = DATA.presupuesto.reduce(function(a,p){ return a+toUSD(p.lim,p.mon); }, 0);
+    if (totalBudgetLim > 0 && projectedSpend > totalBudgetLim) overBudgetRisk = true;
+
+    return {
+      projectedAvail: projectedAvail,
+      projectedSpend: projectedSpend,
+      daysLeft: daysLeft,
+      overBudgetRisk: overBudgetRisk,
+      isCurrentMonth: isCurrentMonth
+    };
+  }
+};
+
+// ─── ACHIEVEMENTS ENGINE ──────────────────────────────────
+var ACHV_LIST = [
+  { id: 'first_gasto',  icon: '💸', name: 'Primer gasto',        check: function(){ return DATA.gastos.length >= 1; } },
+  { id: 'first_ingreso',icon: '💵', name: 'Primer ingreso',      check: function(){ return DATA.ingresos.length >= 1; } },
+  { id: 'first_month',  icon: '🗓️', name: 'Primer mes completo', check: function(){ return DATA.gastos.length >= 5; } },
+  { id: 'first_meta',   icon: '🎯', name: 'Meta creada',         check: function(){ return DATA.metas.length >= 1; } },
+  { id: 'meta_done',    icon: '🏆', name: 'Meta alcanzada',      check: function(){ return DATA.metas.some(function(m){ return m.total>0 && m.actual>=m.total; }); } },
+  { id: 'deuda_done',   icon: '✅', name: 'Deuda finalizada',    check: function(){ return DATA.deudas.some(function(d){ return d.estado==='Pagado'; }); } },
+  { id: 'score_70',     icon: '⭐', name: 'Score saludable',     check: function(){ return SCORE.run().total >= 70; } },
+  { id: 'budget_ok',    icon: '📊', name: 'Presupuesto cumplido',check: function(){
+      if (!DATA.presupuesto.length) return false;
+      var cur = DATA.curMonth, curY = DATA.curYear;
+      var curGas = DATA.gastos.filter(function(x){ return x.month===cur && x.year===curY; });
+      return DATA.presupuesto.every(function(p){
+        var spent = curGas.filter(function(g){ return g.cat===p.cat; }).reduce(function(a,g){ return a+toUSD(g.monto,g.mon); }, 0);
+        return spent <= toUSD(p.lim,p.mon);
+      });
+    } },
+];
+var ACHV = {
+  run: function() {
+    if (!DATA.achvUnlocked) DATA.achvUnlocked = [];
+    var newlyUnlocked = [];
+    ACHV_LIST.forEach(function(a) {
+      var already = DATA.achvUnlocked.indexOf(a.id) !== -1;
+      var earned = false;
+      try { earned = a.check(); } catch(e) {}
+      if (earned && !already) {
+        DATA.achvUnlocked.push(a.id);
+        newlyUnlocked.push(a);
+      }
+    });
+    if (newlyUnlocked.length) save();
+    return { all: ACHV_LIST, unlocked: DATA.achvUnlocked, newlyUnlocked: newlyUnlocked };
   }
 };
 
@@ -1664,6 +1829,44 @@ function refreshHome() {
   el('leg-avail', fmt(Math.max(0, tI - tG)));
   el('leg-gas', fmt(tG));
   el('leg-sav', fmt(tAh));
+
+  // Net worth
+  var nw = NETWORTH.run();
+  var nwEl = document.getElementById('home-networth');
+  if (nwEl) { nwEl.textContent = fmtSigned(nw.patri); nwEl.style.color = nw.patri >= 0 ? 'var(--t1)' : 'var(--red)'; }
+  var nwChgEl = document.getElementById('home-networth-chg');
+  if (nwChgEl) {
+    if (typeof nw.prevPatri === 'number') {
+      var diff = nw.patri - nw.prevPatri;
+      nwChgEl.textContent = (diff >= 0 ? '▲ +' : '▼ -') + fmt(Math.abs(diff)) + ' vs mes ant.';
+      nwChgEl.style.color = diff >= 0 ? 'var(--green)' : 'var(--red)';
+    } else {
+      nwChgEl.textContent = '— sin historial previo';
+      nwChgEl.style.color = 'var(--t3)';
+    }
+  }
+
+  // Prediction
+  var pred = PREDICT.run();
+  var predEl = document.getElementById('home-predict');
+  if (predEl) { predEl.textContent = fmt(pred.projectedAvail); predEl.style.color = pred.projectedAvail >= 0 ? 'var(--t1)' : 'var(--red)'; }
+  var predSubEl = document.getElementById('home-predict-sub');
+  if (predSubEl) {
+    if (!pred.isCurrentMonth) predSubEl.textContent = 'Mes cerrado';
+    else if (pred.overBudgetRisk) { predSubEl.textContent = '⚠️ riesgo de exceder presupuesto'; predSubEl.style.color = 'var(--red)'; }
+    else { predSubEl.textContent = pred.daysLeft + ' días restantes'; predSubEl.style.color = 'var(--t3)'; }
+  }
+
+  // Achievements
+  var achv = ACHV.run();
+  var achvHTML = achv.all.map(function(a) {
+    var unlocked = achv.unlocked.indexOf(a.id) !== -1;
+    return '<div class="achv-chip' + (unlocked ? '' : ' locked') + '"><span>' + a.icon + '</span><span>' + a.name + '</span></div>';
+  }).join('');
+  elHTML('achv-strip', achvHTML);
+  achv.newlyUnlocked.forEach(function(a, i) {
+    setTimeout(function(){ showToast('🏆 Logro desbloqueado: ' + a.name, 3500); }, 600 + i * 1200);
+  });
 
   // AI
   var ai = AI.run();
