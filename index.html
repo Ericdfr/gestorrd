@@ -641,6 +641,14 @@ input, select, textarea, button { font-family: inherit; }
 .score-arc-wrap { width: 80px; height: 50px; position: relative; }
 .score-factors { display: flex; flex-direction: column; gap: 10px; }
 .score-factor { display: flex; align-items: center; gap: 10px; }
+.logro-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.logro-item:last-child { border-bottom: none; }
+.logro-badge { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+.logro-badge.earned { background: var(--gold-dim); border: 1px solid rgba(201,169,110,0.4); }
+.logro-badge.locked { background: var(--bg3); border: 1px solid var(--border); filter: grayscale(1); opacity: 0.45; }
+.logro-title { font-size: 13px; font-weight: 700; color: var(--t1); }
+.logro-desc { font-size: 11px; color: var(--t3); margin-top: 2px; }
+.logro-earned-tag { font-size: 10px; font-weight: 700; color: var(--gold); background: var(--gold-dim); border-radius: 20px; padding: 2px 8px; margin-top: 3px; display: inline-block; }
 .score-factor-name { font-size: 12px; color: var(--t2); flex: 1; }
 .score-factor-pts { font-size: 12px; font-weight: 700; color: var(--t1); width: 50px; text-align: right; }
 
@@ -1196,11 +1204,17 @@ canvas { max-width: 100%; display: block; }
         <div class="score-factors" id="score-factors"></div>
       </div>
 
+      <!-- Logros -->
+      <div class="card" id="logros-card" style="display:none">
+        <div class="card-title">🏆 Logros</div>
+        <div id="logros-list"></div>
+      </div>
+
       <!-- Quick history -->
       <div class="card">
         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
           Últimas transacciones
-          <button onclick="sN('resumen')" style="background:none;border:none;color:var(--gold);font-size:12px;font-weight:700;cursor:pointer">Ver todo</button>
+          <button onclick="openSheet('historial')" style="background:none;border:none;color:var(--gold);font-size:12px;font-weight:700;cursor:pointer">Ver todo</button>
         </div>
         <div id="home-history"></div>
       </div>
@@ -2023,7 +2037,8 @@ function refreshHome() {
   } else {
     elHTML('home-history', '<div class="empty-state"><div class="empty-icon">📒</div><div class="empty-text">Sin transacciones este mes</div></div>');
   }
-  // Animate key numbers
+  // Achievements and animated counters
+  updLogros();
   animateCounters();
 }
 
@@ -2636,15 +2651,41 @@ function saveIngreso() {
 }
 
 function buildDeudaSheet() {
-  return '<div class="step-header"><button class="step-back" onclick="openAddMenu()">←</button>' +
-    '<div class="step-title">Agregar deuda</div></div>' +
-    '<div style="padding:0 16px 16px">' +
-    '<div class="form-field"><label>Nombre</label><input id="dd-nom" type="text" placeholder="Ej: BHD León, Chase..."></div>' +
-    '<div class="form-row"><div class="form-field"><label>Tipo</label><select id="dd-tipo"><option>Tarjeta crédito</option><option>Préstamo hipotecario</option><option>Préstamo personal</option><option>Préstamo negocio</option><option>Personal (amigo)</option><option>Otro</option></select></div><div class="form-field"><label>Moneda</label><select id="dd-mon"><option>USD</option><option>DOP</option></select></div></div>' +
-    '<div class="form-field"><label>Saldo pendiente</label><input id="dd-bal" type="number" placeholder="0.00" inputmode="decimal"></div>' +
-    '<div class="form-row"><div class="form-field"><label>Fecha de pago</label><input id="dd-fecha" type="date"></div><div class="form-field"><label>Tasa % anual</label><input id="dd-tasa" type="number" placeholder="0.00" inputmode="decimal"></div></div>' +
-    '<div class="form-field"><label>Estado</label><select id="dd-estado"><option>Activo</option><option>Pagado</option><option>Atrasado</option></select></div>' +
-    '<button class="btn-full" onclick="saveDeuda()">Guardar deuda</button></div>';
+  var deudas = (DATA.deudas || []).filter(function(d){ return d.estado !== 'Pagado'; });
+  var listHTML = '';
+  if (deudas.length) {
+    listHTML = deudas.map(function(d) {
+      var pct = d.original > 0 ? Math.min(100, Math.round((d.totalPaid||0) / d.original * 100)) : 0;
+      return '<div style="padding:12px 0;border-bottom:1px solid var(--border)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+          '<span style="font-size:14px;font-weight:600;color:var(--t1)">' + d.nom + '</span>' +
+          '<span style="font-size:14px;font-weight:700;color:var(--red)">' + fmt(d.bal||0, d.mon) + '</span>' +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--t2);margin-bottom:6px">' + d.tipo + (d.fecha ? ' · Pago: ' + d.fecha : '') + '</div>' +
+        '<div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:4px">' +
+          '<div style="width:' + pct + '%;height:100%;background:var(--green);border-radius:3px"></div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center">' +
+          '<span style="font-size:11px;color:var(--t3)">' + pct + '% pagado</span>' +
+          '<button onclick="openSheet(\'pagar-deuda\',' + d.id + ')" style="background:var(--gold-dim);border:1px solid var(--gold);color:var(--gold);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer">Pagar</button>' +
+        '</div></div>';
+    }).join('');
+  } else {
+    listHTML = '<div class="empty-state" style="padding:20px 0"><div class="empty-icon">💳</div><div class="empty-text">Sin deudas activas</div><div class="empty-sub">¡Excelente! No tienes deudas registradas</div></div>';
+  }
+  return '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button>' +
+    '<div class="step-title">💳 Deudas activas</div></div>' +
+    '<div style="padding:0 16px 24px">' +
+    listHTML +
+    '<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">' +
+      '<div style="font-size:12px;font-weight:700;color:var(--t3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px">+ Agregar deuda</div>' +
+      '<div class="form-field"><label>Nombre</label><input id="dd-nom" type="text" placeholder="Ej: BHD León, Chase..."></div>' +
+      '<div class="form-row"><div class="form-field"><label>Tipo</label><select id="dd-tipo"><option>Tarjeta crédito</option><option>Préstamo hipotecario</option><option>Préstamo personal</option><option>Préstamo negocio</option><option>Personal (amigo)</option><option>Otro</option></select></div><div class="form-field"><label>Moneda</label><select id="dd-mon"><option>USD</option><option>DOP</option></select></div></div>' +
+      '<div class="form-field"><label>Saldo pendiente</label><input id="dd-bal" type="number" placeholder="0.00" inputmode="decimal"></div>' +
+      '<div class="form-row"><div class="form-field"><label>Fecha de pago</label><input id="dd-fecha" type="date"></div><div class="form-field"><label>Tasa % anual</label><input id="dd-tasa" type="number" placeholder="0.00" inputmode="decimal"></div></div>' +
+      '<div class="form-field"><label>Estado</label><select id="dd-estado"><option>Activo</option><option>Pagado</option><option>Atrasado</option></select></div>' +
+      '<button class="btn-full" onclick="saveDeuda()">Guardar deuda</button>' +
+    '</div></div>';
 }
 function saveDeuda() {
   var nom = v('dd-nom'), bal = parseFloat(v('dd-bal'));
@@ -2655,13 +2696,61 @@ function saveDeuda() {
 }
 
 function buildMetaSheet() {
-  return '<div class="step-header"><button class="step-back" onclick="openAddMenu()">←</button>' +
-    '<div class="step-title">Nueva meta 🎯</div></div>' +
-    '<div style="padding:0 16px 16px">' +
-    '<div class="form-field"><label>¿Para qué estás ahorrando?</label><input id="mt-nom" type="text" placeholder="Ej: Vacaciones, Auto, Apartamento..."></div>' +
-    '<div class="form-row"><div class="form-field"><label>Ya tengo ahorrado</label><input id="mt-act" type="number" placeholder="0.00" inputmode="decimal"></div><div class="form-field"><label>Meta total</label><input id="mt-tot" type="number" placeholder="0.00" inputmode="decimal"></div></div>' +
-    '<div class="form-row"><div class="form-field"><label>Moneda</label><select id="mt-mon"><option>USD</option><option>DOP</option></select></div><div class="form-field"><label>Fecha objetivo</label><input id="mt-fecha" type="date"></div></div>' +
-    '<button class="btn-full" onclick="saveMeta()">Guardar meta</button></div>';
+  var metas = DATA.metas || [];
+  var listHTML = '';
+  if (metas.length) {
+    listHTML = metas.map(function(m, i) {
+      var pct = m.total > 0 ? Math.min(100, Math.round((m.actual||0) / m.total * 100)) : 0;
+      var falta = Math.max(0, (m.total||0) - (m.actual||0));
+      var color = pct >= 100 ? 'var(--green)' : pct >= 60 ? 'var(--gold)' : 'var(--blue)';
+      return '<div style="padding:14px 0;border-bottom:1px solid var(--border)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">' +
+          '<div><div style="font-size:15px;font-weight:700;color:var(--t1)">' + m.nom + '</div>' +
+          (m.fecha ? '<div style="font-size:11px;color:var(--t3);margin-top:2px">📅 ' + m.fecha + '</div>' : '') + '</div>' +
+          '<div style="text-align:right">' +
+            '<div style="font-size:13px;font-weight:700;color:' + color + '">' + pct + '%</div>' +
+            '<button onclick="deleteMeta(' + i + ')" style="background:none;border:none;color:var(--red);font-size:12px;cursor:pointer;padding:0">✕ eliminar</button>' +
+          '</div>' +
+        '</div>' +
+        '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:6px">' +
+          '<div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:4px;transition:width .5s"></div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t3)">' +
+          '<span>' + fmt(m.actual||0, m.mon) + ' ahorrado</span>' +
+          '<span>' + (pct < 100 ? 'Faltan ' + fmt(falta, m.mon) : '✅ Meta alcanzada') + '</span>' +
+        '</div>' +
+        '<button onclick="abonarMeta(' + i + ')" style="margin-top:8px;background:var(--gold-dim);border:1px solid var(--gold);color:var(--gold);border-radius:10px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;width:100%">+ Abonar a esta meta</button>' +
+      '</div>';
+    }).join('');
+  } else {
+    listHTML = '<div class="empty-state" style="padding:24px 0"><div class="empty-icon">🎯</div><div class="empty-text">Sin metas activas</div><div class="empty-sub">Crea tu primera meta de ahorro</div></div>';
+  }
+  return '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button>' +
+    '<div class="step-title">🎯 Metas de ahorro</div></div>' +
+    '<div style="padding:0 16px 24px">' +
+    listHTML +
+    '<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">' +
+      '<div style="font-size:12px;font-weight:700;color:var(--t3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px">+ Crear meta</div>' +
+      '<div class="form-field"><label>¿Para qué estás ahorrando?</label><input id="mt-nom" type="text" placeholder="Ej: Vacaciones, Auto, Apartamento..."></div>' +
+      '<div class="form-row"><div class="form-field"><label>Ya tengo</label><input id="mt-act" type="number" placeholder="0.00" inputmode="decimal"></div><div class="form-field"><label>Meta total</label><input id="mt-tot" type="number" placeholder="0.00" inputmode="decimal"></div></div>' +
+      '<div class="form-row"><div class="form-field"><label>Moneda</label><select id="mt-mon"><option>USD</option><option>DOP</option></select></div><div class="form-field"><label>Fecha objetivo</label><input id="mt-fecha" type="date"></div></div>' +
+      '<button class="btn-full" onclick="saveMeta()">Guardar meta</button>' +
+    '</div></div>';
+}
+function deleteMeta(i) {
+  DATA.metas.splice(i, 1);
+  if (DATA.ahorros && DATA.ahorros[i]) DATA.ahorros.splice(i, 1);
+  save(); openSheet('add-meta');
+}
+function abonarMeta(i) {
+  var m = DATA.metas[i];
+  if (!m) return;
+  var monto = parseFloat(prompt('¿Cuánto vas a abonar a "' + m.nom + '"?') || '0');
+  if (!monto || monto <= 0) return;
+  m.actual = (m.actual || 0) + monto;
+  if (DATA.ahorros && DATA.ahorros[i]) DATA.ahorros[i].actual = m.actual;
+  save(); openSheet('add-meta');
+  showToast('✓ +' + fmt(monto, m.mon) + ' abonado a ' + m.nom);
 }
 function saveMeta() {
   var nom = v('mt-nom'), tot = parseFloat(v('mt-tot'));
@@ -2871,16 +2960,46 @@ function deleteCustomCat(idx) {
 
 function buildPresupuestoSheet() {
   var catOpts = getAllCats().map(function(c){ return '<option>' + c[0] + '</option>'; }).join('');
-  return '<div class="step-header"><button class="step-back" onclick="openAddMenu()">←</button>' +
-    '<div class="step-title">Límite mensual</div><div class="step-sub">Define cuánto quieres gastar en cada categoría.</div></div>' +
-    '<div style="padding:0 16px 16px">' +
-    '<div class="form-field"><label>Categoría</label><select id="pb-cat">' + catOpts + '</select></div>' +
-    '<div class="form-row"><div class="form-field"><label>Límite</label><input id="pb-lim" type="number" placeholder="0.00" inputmode="decimal"></div><div class="form-field"><label>Moneda</label><select id="pb-mon"><option>USD</option><option>DOP</option></select></div></div>' +
-    '<button class="btn-full" onclick="savePresupuesto()">Guardar</button>' +
-    '<div style="margin-top:16px">' + (DATA.presupuesto.length ? DATA.presupuesto.map(function(p){
-      return '<div class="list-item"><span style="font-size:13px;color:var(--t2)">' + p.cat + '</span><span style="font-size:14px;font-weight:700;color:var(--gold)">' + fmt(p.lim,p.mon) + '</span></div>';
-    }).join('') : '<div class="empty-state"><div class="empty-text">Sin límites definidos</div></div>') + '</div>' +
-    '</div>';
+  var cur = DATA.curMonth, curY = DATA.curYear;
+  var curGas = (DATA.gastos||[]).filter(function(x){ return x.month===cur && x.year===curY; });
+  var listHTML = '';
+  if (DATA.presupuesto.length) {
+    listHTML = DATA.presupuesto.map(function(p, i) {
+      var spent = curGas.filter(function(g){ return g.cat===p.cat; }).reduce(function(a,g){ return a+toUSD(g.monto,g.mon); }, 0);
+      var lim = toUSD(p.lim, p.mon);
+      var pct = lim > 0 ? Math.min(100, Math.round(spent/lim*100)) : 0;
+      var color = pct >= 90 ? 'var(--red)' : pct >= 75 ? 'var(--gold)' : 'var(--green)';
+      return '<div style="padding:12px 0;border-bottom:1px solid var(--border)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+          '<span style="font-size:14px;font-weight:600;color:var(--t1)">' + p.cat + '</span>' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+            '<span style="font-size:13px;color:var(--t2)">' + fmt(spent) + ' / ' + fmt(p.lim,p.mon) + '</span>' +
+            '<button onclick="deletePresupuesto(' + i + ')" style="background:none;border:none;color:var(--red);font-size:14px;cursor:pointer;padding:0">✕</button>' +
+          '</div>' +
+        '</div>' +
+        '<div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">' +
+          '<div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:3px;transition:width .4s"></div>' +
+        '</div>' +
+        '<div style="font-size:11px;color:' + color + ';margin-top:3px;font-weight:600">' + pct + '% usado</div>' +
+      '</div>';
+    }).join('');
+  } else {
+    listHTML = '<div class="empty-state" style="padding:20px 0"><div class="empty-icon">📊</div><div class="empty-text">Sin presupuestos definidos</div><div class="empty-sub">Define límites por categoría para controlar tus gastos</div></div>';
+  }
+  return '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button>' +
+    '<div class="step-title">Presupuesto mensual</div></div>' +
+    '<div style="padding:0 16px 20px">' +
+    listHTML +
+    '<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">' +
+      '<div style="font-size:12px;font-weight:700;color:var(--t3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px">+ Agregar límite</div>' +
+      '<div class="form-field"><label>Categoría</label><select id="pb-cat">' + catOpts + '</select></div>' +
+      '<div class="form-row"><div class="form-field"><label>Límite</label><input id="pb-lim" type="number" placeholder="0.00" inputmode="decimal"></div><div class="form-field"><label>Moneda</label><select id="pb-mon"><option>USD</option><option>DOP</option></select></div></div>' +
+      '<button class="btn-full" onclick="savePresupuesto()">Guardar</button>' +
+    '</div></div>';
+}
+function deletePresupuesto(i) {
+  DATA.presupuesto.splice(i, 1);
+  save(); openSheet('add-presupuesto');
 }
 function savePresupuesto() {
   var cat = v('pb-cat'), lim = parseFloat(v('pb-lim'));
@@ -2892,27 +3011,31 @@ function savePresupuesto() {
   showToast('Presupuesto guardado ✓');
 }
 
-// ─── GASTOS FIJOS (recurrentes) ────────────────────────────
 function buildGastosFijosSheet() {
   if (!DATA.gastosFijos) DATA.gastosFijos = [];
-  var listHTML = DATA.gastosFijos.length ? DATA.gastosFijos.map(function(f, i) {
-    return '<div class="list-item">' +
-      '<div class="list-item-left"><div><div class="list-item-title">' + f.desc + '</div>' +
-      '<div class="list-item-sub">Día ' + f.dia + ' de cada mes</div></div></div>' +
-      '<div style="display:flex;align-items:center;gap:8px">' +
-      '<span class="list-item-amount amount-neg">' + fmt(f.monto, f.mon) + '</span>' +
-      '<button onclick="applyGastoFijo(' + i + ')" style="background:var(--gold-dim);border:1px solid var(--gold);color:var(--gold);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">Aplicar</button>' +
-      '<button onclick="delGastoFijo(' + i + ')" style="background:var(--red-bg);border:1px solid var(--red-bdr);color:var(--red);border-radius:8px;padding:5px 8px;font-size:11px;cursor:pointer">✕</button>' +
-      '</div></div>';
-  }).join('') : '<div class="empty-state"><div class="empty-icon">🔁</div><div class="empty-text">Sin gastos fijos guardados</div></div>';
-  return '<div class="step-header"><button class="step-back" onclick="openAddMenu()">←</button>' +
-    '<div class="step-title">Gastos fijos mensuales</div><div class="step-sub">Guarda gastos que se repiten cada mes (Netflix, gimnasio, alquiler...) y aplícalos con un toque.</div></div>' +
-    '<div style="padding:0 16px 16px">' +
-    '<div class="form-field"><label>Descripción</label><input id="gfj-desc" type="text" placeholder="Ej: Netflix, Gimnasio..."></div>' +
-    '<div class="form-row"><div class="form-field"><label>Monto</label><input id="gfj-monto" type="number" placeholder="0.00" inputmode="decimal"></div><div class="form-field"><label>Día del mes</label><input id="gfj-dia" type="number" placeholder="1-31" min="1" max="31"></div></div>' +
-    '<div class="form-field"><label>Categoría</label><select id="gfj-cat">' + getAllCats().map(function(c){ return '<option>' + c[0] + '</option>'; }).join('') + '</select></div>' +
-    '<button class="btn-full" onclick="saveGastoFijo()">Guardar gasto fijo</button>' +
-    '<div style="margin-top:16px">' + listHTML + '</div></div>';
+  var listHTML = DATA.gastosFijos.length
+    ? DATA.gastosFijos.map(function(f, i) {
+        return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">' +
+          '<div style="width:40px;height:40px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🔁</div>' +
+          '<div style="flex:1"><div style="font-size:14px;font-weight:600;color:var(--t1)">' + f.desc + '</div><div style="font-size:12px;color:var(--t3)">Día ' + f.dia + ' · ' + f.cat.split(' ').slice(1).join(' ') + '</div></div>' +
+          '<div style="display:flex;align-items:center;gap:6px">' +
+            '<span style="font-size:14px;font-weight:700;color:var(--red)">−' + fmt(f.monto,f.mon) + '</span>' +
+            '<button onclick="applyGastoFijo(' + i + ')" style="background:var(--gold-dim);border:1px solid var(--gold);color:var(--gold);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">▶ Aplicar</button>' +
+            '<button onclick="delGastoFijo(' + i + ')" style="background:var(--red-bg);border:1px solid var(--red-bdr);color:var(--red);border-radius:8px;padding:5px 8px;font-size:11px;cursor:pointer">✕</button>' +
+          '</div></div>';
+      }).join('')
+    : '<div class="empty-state" style="padding:20px 0"><div class="empty-icon">🔁</div><div class="empty-text">Sin gastos fijos guardados</div><div class="empty-sub">Guarda gastos mensuales y aplícalos con un toque</div></div>';
+  return '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button>' +
+    '<div class="step-title">Gastos fijos</div><div class="step-sub">Recurrentes mensuales</div></div>' +
+    '<div style="padding:0 16px 20px">' +
+    listHTML +
+    '<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">' +
+      '<div style="font-size:12px;font-weight:700;color:var(--t3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px">+ Agregar gasto fijo</div>' +
+      '<div class="form-field"><label>Descripción</label><input id="gfj-desc" type="text" placeholder="Ej: Netflix, Gimnasio..."></div>' +
+      '<div class="form-row"><div class="form-field"><label>Monto</label><input id="gfj-monto" type="number" placeholder="0.00" inputmode="decimal"></div><div class="form-field"><label>Día del mes</label><input id="gfj-dia" type="number" placeholder="1-31" min="1" max="31"></div></div>' +
+      '<div class="form-field"><label>Categoría</label><select id="gfj-cat">' + getAllCats().map(function(c){ return '<option>' + c[0] + '</option>'; }).join('') + '</select></div>' +
+      '<button class="btn-full" onclick="saveGastoFijo()">Guardar gasto fijo</button>' +
+    '</div></div>';
 }
 function saveGastoFijo() {
   var desc = v('gfj-desc'), monto = parseFloat(v('gfj-monto'));
@@ -3059,6 +3182,74 @@ function animateCounter(elementId, targetValue, prefix, decimals, duration) {
   }
   requestAnimationFrame(step);
 }
+// ─── LOGROS (ACHIEVEMENTS) ─────────────────────────────────
+function updLogros() {
+  var card = document.getElementById('logros-card');
+  var list = document.getElementById('logros-list');
+  if (!card || !list) return;
+
+  var cur = DATA.curMonth, curY = DATA.curYear;
+  var gastos = DATA.gastos || [];
+  var ingresos = DATA.ingresos || [];
+  var curG = gastos.filter(function(x){ return x.month===cur && x.year===curY; });
+  var curI = ingresos.filter(function(x){ return x.month===cur && x.year===curY; });
+  var tI = curI.reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
+  var tG = curG.reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
+  var totalGastos = gastos.length;
+  var totalIngs = ingresos.length;
+  var numBancos = (DATA.bancos||[]).length;
+  var numMetas = (DATA.metas||[]).length;
+  var numDeudas = (DATA.deudas||[]).filter(function(d){ return d.estado!=='Pagado'; }).length;
+  var numPresup = (DATA.presupuesto||[]).length;
+  var metasComp = (DATA.metas||[]).filter(function(m){ return (m.actual||0) >= (m.total||1); }).length;
+  var sc = calcScore();
+  var rachaGastos = 0;
+  // Check consecutive months with gastos registered
+  for (var mm = cur; mm >= 0; mm--) {
+    if (gastos.some(function(g){ return g.month===mm && g.year===curY; })) rachaGastos++; else break;
+  }
+
+  var LOGROS = [
+    { id:'primero_gasto',  icon:'💸', title:'Primer gasto',       desc:'Registraste tu primer gasto',              earned: totalGastos >= 1 },
+    { id:'primer_ingreso', icon:'💵', title:'Primer ingreso',      desc:'Registraste tu primer ingreso',            earned: totalIngs >= 1 },
+    { id:'primera_cuenta', icon:'🏦', title:'Conectado',           desc:'Agregaste una cuenta bancaria',            earned: numBancos >= 1 },
+    { id:'primera_meta',   icon:'🎯', title:'Soñador',             desc:'Creaste tu primera meta de ahorro',        earned: numMetas >= 1 },
+    { id:'meta_cumplida',  icon:'🏆', title:'Meta cumplida',       desc:'Alcanzaste una meta de ahorro',            earned: metasComp >= 1 },
+    { id:'presupuesto',    icon:'📊', title:'Organizado',          desc:'Definiste un presupuesto mensual',         earned: numPresup >= 1 },
+    { id:'sin_deudas',     icon:'🕊️', title:'Libre de deudas',    desc:'No tienes deudas activas',                 earned: totalGastos > 0 && numDeudas === 0 },
+    { id:'score_70',       icon:'⭐', title:'Buen score',          desc:'Alcanzaste un score financiero de 70+',    earned: sc.total >= 70 },
+    { id:'ahorro_pos',     icon:'🐷', title:'Ahorrador',           desc:'Ingresaste más de lo que gastaste este mes', earned: tI > 0 && tG < tI },
+    { id:'racha_3',        icon:'🔥', title:'En racha',            desc:'Registraste gastos 3 meses seguidos',      earned: rachaGastos >= 3 },
+    { id:'diez_gastos',    icon:'📋', title:'Disciplinado',        desc:'Registraste más de 10 gastos',             earned: totalGastos >= 10 },
+    { id:'score_90',       icon:'💎', title:'Élite financiero',    desc:'Alcanzaste un score de 90 o más',          earned: sc.total >= 90 },
+  ];
+
+  var earned = LOGROS.filter(function(l){ return l.earned; });
+  var locked = LOGROS.filter(function(l){ return !l.earned; });
+
+  if (earned.length === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  var html = earned.map(function(l) {
+    return '<div class="logro-item">' +
+      '<div class="logro-badge earned">' + l.icon + '</div>' +
+      '<div><div class="logro-title">' + l.title + '</div><div class="logro-desc">' + l.desc + '</div>' +
+      '<span class="logro-earned-tag">✓ Conseguido</span></div></div>';
+  }).join('');
+
+  // Show up to 3 locked logros as "próximos"
+  if (locked.length > 0) {
+    html += '<div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.5px;text-transform:uppercase;margin:12px 0 6px">Próximos logros</div>';
+    html += locked.slice(0, 3).map(function(l) {
+      return '<div class="logro-item">' +
+        '<div class="logro-badge locked">' + l.icon + '</div>' +
+        '<div><div class="logro-title" style="color:var(--t3)">' + l.title + '</div><div class="logro-desc">' + l.desc + '</div></div></div>';
+    }).join('');
+  }
+
+  list.innerHTML = html;
+}
+
 function animateCounters() {
   // Animate key home numbers after refreshHome runs
   setTimeout(function() {
