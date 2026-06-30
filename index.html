@@ -2417,6 +2417,9 @@ function closeSheet() {
   var ov = document.getElementById('sheet-overlay');
   if (sh) sh.style.display = 'none';
   if (ov) ov.classList.remove('open');
+  // Reset wizard state on every close so stale step never bleeds into next open
+  _wgStep = 1; _wgMonto = 0; _wgDesc = ''; _wgFecha = '';
+  _selCat = ''; _selSource = ''; _gastoMon = 'USD';
 }
 
 // ─── SHEET BUILDERS ───────────────────────────────────────
