@@ -2652,7 +2652,20 @@ function selCat(btn, cat) {
 function buildSourceButtons() {
   var items = [{ icon: '💵', name: 'Efectivo', sub: '', id: 'efectivo' }];
   DATA.bancos.forEach(function(b, i) {
-    items.push({ icon: b.esTarjeta ? '💳' : '🏦', name: b.banco + (b.ultimos?' ···'+b.ultimos:''), sub: fmt(b.bal||0, b.mon), id: 'banco_'+i });
+    var sub;
+    if (b.esTarjeta) {
+      // Show available credit, not what's owed
+      if (b.dispUSD > 0 && b.dispDOP > 0) {
+        sub = 'Disp: ' + fmt(b.dispUSD||0,'USD') + ' / RD$' + Math.round(b.dispDOP||0).toLocaleString('es-DO');
+      } else if (b.dispDOP > 0) {
+        sub = 'Disp: RD$' + Math.round(b.dispDOP||0).toLocaleString('es-DO');
+      } else {
+        sub = 'Disp: ' + fmt(b.dispUSD||0,'USD');
+      }
+    } else {
+      sub = b.mon === 'DOP' ? 'RD$' + Math.round(b.bal||0).toLocaleString('es-DO') : fmt(b.bal||0, b.mon);
+    }
+    items.push({ icon: b.esTarjeta ? '💳' : '🏦', name: (b.nom||b.banco) + (b.ultimos?' ···'+b.ultimos:''), sub: sub, id: 'banco_'+i });
   });
   return items.map(function(s) {
     return '<div class="source-item" id="src-' + s.id + '" onclick="selSource(this,\'' + s.id + '\')">' +
@@ -2693,11 +2706,16 @@ function saveGasto() {
           banco.dispDOP  = Math.max(0, Math.round(((banco.dispDOP||0) - monto)*100)/100);
         }
         banco.bal = banco.saldoUSD || 0;
-        // Sync linked deuda
+        // Sync linked deuda — update both USD and DOP balances
         var deuda = (DATA.deudas||[]).find(function(dd){ return dd.tcId === banco.id; });
         if (deuda) {
-          deuda.bal = banco.saldoUSD || 0;
-          if (deuda.bal > 0) deuda.estado = 'Activo';
+          deuda.bal    = banco.saldoUSD || 0;
+          deuda.balDOP = banco.saldoDOP || 0;
+          if (banco.saldoUSD === 0 && banco.saldoDOP === 0) {
+            deuda.estado = 'Pagado';
+          } else {
+            deuda.estado = 'Activo';
+          }
         }
       } else {
         // Regular bank account — deduct balance
@@ -3056,8 +3074,9 @@ function saveBanco() {
     var saldoUSD = limUSD > 0 ? Math.max(0, Math.round((limUSD - dispUSD) * 100) / 100) : 0;
     var saldoDOP = limDOP > 0 ? Math.max(0, Math.round((limDOP - dispDOP) * 100) / 100) : 0;
     var tcNom = v('tc-nombre') || banco;
+    var bancoId = Date.now();
     DATA.bancos.push({
-      id: Date.now(), banco: banco, nom: tcNom, tipo: 'Tarjeta crédito', mon: 'USD',
+      id: bancoId, banco: banco, nom: tcNom, tipo: 'Tarjeta crédito', mon: 'USD',
       bal: saldoUSD, pais: v('bc-pais'), ultimos: v('bc-digits'), esTarjeta: true,
       limUSD: limUSD, limDOP: limDOP, dispUSD: dispUSD, dispDOP: dispDOP,
       saldoUSD: saldoUSD, saldoDOP: saldoDOP, corte: v('tc-corte'), pagoFecha: v('tc-pago')
@@ -3065,9 +3084,9 @@ function saveBanco() {
     // Auto-create matching deuda so it shows up in "Deudas activas" too
     if (saldoUSD > 0 || saldoDOP > 0) {
       DATA.deudas.push({
-        id: Date.now() + 1, nom: tcNom, tipo: 'Tarjeta crédito', mon: 'USD',
+        id: bancoId + 1, nom: tcNom, tipo: 'Tarjeta crédito', mon: 'USD',
         bal: saldoUSD, balDOP: saldoDOP, original: saldoUSD, totalPaid: 0,
-        fecha: v('tc-pago'), estado: 'Activo', esTCDeuda: true, tcId: DATA.bancos[DATA.bancos.length-1].id
+        fecha: v('tc-pago'), estado: 'Activo', esTCDeuda: true, tcId: bancoId
       });
     }
   } else {
@@ -3222,13 +3241,14 @@ function pagarDeudaUSD(deudaId) {
   // Update deuda and linked card
   deuda.bal = Math.max(0, Math.round(((deuda.bal||0) - monto)*100)/100);
   deuda.totalPaid = (deuda.totalPaid||0) + monto;
-  if (deuda.bal === 0) deuda.estado = 'Pagado';
-  var tc = deuda.tcId ? DATA.bancos.find(function(b){ return b.id === deuda.tcId; }) : null;
-  if (tc) {
-    tc.saldoUSD = Math.max(0, Math.round(((tc.saldoUSD||0) - monto)*100)/100);
-    tc.bal = tc.saldoUSD;
-    tc.dispUSD = Math.min(tc.limUSD||0, (tc.dispUSD||0) + monto);
-    if (tc.saldoUSD === 0 && tc.saldoDOP === 0) deuda.estado = 'Pagado';
+  var tc2 = deuda.tcId ? DATA.bancos.find(function(b){ return b.id === deuda.tcId; }) : null;
+  if (tc2) {
+    tc2.saldoUSD = Math.max(0, Math.round(((tc2.saldoUSD||0) - monto)*100)/100);
+    tc2.bal = tc2.saldoUSD;
+    tc2.dispUSD = Math.min(tc2.limUSD||0, (tc2.dispUSD||0) + monto);
+    if (tc2.saldoUSD === 0 && tc2.saldoDOP === 0) deuda.estado = 'Pagado';
+  } else if (deuda.bal === 0) {
+    deuda.estado = 'Pagado';
   }
   if (!deuda.pagos) deuda.pagos = [];
   deuda.pagos.push({ fecha: new Date().toISOString().slice(0,10), monto: monto, mon:'USD', desde: banco?banco.banco:'Manual' });
@@ -3253,11 +3273,14 @@ function pagarDeudaDOP(deudaId) {
   }
 
   // Update linked card DOP balance
-  var tc = deuda.tcId ? DATA.bancos.find(function(b){ return b.id === deuda.tcId; }) : null;
-  if (tc) {
-    tc.saldoDOP = Math.max(0, Math.round(((tc.saldoDOP||0) - monto)*100)/100);
-    tc.dispDOP = Math.min(tc.limDOP||0, (tc.dispDOP||0) + monto);
-    if (tc.saldoUSD === 0 && tc.saldoDOP === 0) deuda.estado = 'Pagado';
+  deuda.balDOP = Math.max(0, Math.round(((deuda.balDOP||0) - monto)*100)/100);
+  var tc3 = deuda.tcId ? DATA.bancos.find(function(b){ return b.id === deuda.tcId; }) : null;
+  if (tc3) {
+    tc3.saldoDOP = Math.max(0, Math.round(((tc3.saldoDOP||0) - monto)*100)/100);
+    tc3.dispDOP = Math.min(tc3.limDOP||0, (tc3.dispDOP||0) + monto);
+    if (tc3.saldoUSD === 0 && tc3.saldoDOP === 0) deuda.estado = 'Pagado';
+  } else if (deuda.bal === 0 && deuda.balDOP === 0) {
+    deuda.estado = 'Pagado';
   }
   if (!deuda.pagos) deuda.pagos = [];
   deuda.pagos.push({ fecha: new Date().toISOString().slice(0,10), monto: monto, mon:'DOP', desde: banco?banco.banco:'Manual' });
@@ -3469,87 +3492,134 @@ function delGastoFijo(i) {
 }
 
 // ─── ESCANEAR FACTURA CON IA ───────────────────────────────
+// ─── GEMINI CONFIG ─────────────────────────────────────────
+
+var GEMINI_PROXY = 'https://vksnxkdigymlkzjynuso.supabase.co/functions/v1/gemini-scan';
+
 function buildScanSheet() {
   return '<div class="step-header"><button class="step-back" onclick="openAddMenu()">←</button>' +
-    '<div class="step-title">📷 Escanear factura</div><div class="step-sub">Toma una foto o sube una imagen y la IA llena el gasto por ti.</div></div>' +
-    '<div style="padding:0 16px 16px">' +
+    '<div class="step-title">📷 Escanear factura</div>' +
+    '<div class="step-sub">Gemini IA extrae monto, descripción y categoría automáticamente.</div></div>' +
+    '<div style="padding:0 16px 20px">' +
     '<div style="display:flex;gap:10px;margin-bottom:14px">' +
-      '<button onclick="openScan(\'camera\')" style="flex:1;padding:18px 8px;background:var(--gold-dim);border:1.5px solid var(--gold);border-radius:var(--r-md);color:var(--gold);font-weight:700;font-size:13px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px"><span style="font-size:24px">📸</span>Cámara</button>' +
-      '<button onclick="openScan(\'gallery\')" style="flex:1;padding:18px 8px;background:var(--surface);border:1.5px solid var(--border2);border-radius:var(--r-md);color:var(--t1);font-weight:700;font-size:13px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px"><span style="font-size:24px">🖼️</span>Galería</button>' +
+      '<button onclick="openScan(\'camera\')" style="flex:1;padding:18px 8px;background:var(--gold-dim);border:1.5px solid var(--gold);border-radius:var(--r-md);color:var(--gold);font-weight:700;font-size:13px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px"><span style="font-size:28px">📸</span>Cámara</button>' +
+      '<button onclick="openScan(\'gallery\')" style="flex:1;padding:18px 8px;background:var(--surface);border:1.5px solid var(--border2);border-radius:var(--r-md);color:var(--t1);font-weight:700;font-size:13px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px"><span style="font-size:28px">🖼️</span>Galería</button>' +
     '</div>' +
     '<input type="file" id="scan-file-camera" accept="image/*" capture="environment" style="display:none" onchange="processScan(event)">' +
     '<input type="file" id="scan-file-gallery" accept="image/*" style="display:none" onchange="processScan(event)">' +
-    '<div id="scan-preview-wrap" style="display:none;margin-bottom:12px">' +
-      '<img id="scan-preview-img" style="width:100%;border-radius:var(--r-md);border:1px solid var(--border)">' +
+    '<div id="scan-preview-wrap" style="display:none;margin-bottom:14px;position:relative">' +
+      '<img id="scan-preview-img" style="width:100%;max-height:220px;object-fit:contain;border-radius:var(--r-md);border:1px solid var(--border)">' +
     '</div>' +
-    '<div id="scan-status" style="font-size:13px;color:var(--t2);text-align:center;padding:8px 0"></div>' +
+    '<div id="scan-status" style="font-size:13px;color:var(--t2);text-align:center;padding:8px 0;min-height:32px"></div>' +
     '</div>';
 }
-function openScan(mode) {
-  var id = mode === 'camera' ? 'scan-file-camera' : 'scan-file-gallery';
-  var inp = document.getElementById(id);
-  if (inp) inp.click();
-}
+
 function processScan(event) {
   var file = event.target.files[0];
   if (!file) return;
-  var wrap = document.getElementById('scan-preview-wrap');
-  var img = document.getElementById('scan-preview-img');
+  var wrap   = document.getElementById('scan-preview-wrap');
+  var img    = document.getElementById('scan-preview-img');
   var status = document.getElementById('scan-status');
-  if (wrap) wrap.style.display = 'block';
-  if (status) status.textContent = '🔍 Analizando factura con IA...';
+
   var reader = new FileReader();
   reader.onload = function(e) {
-    if (img) img.src = e.target.result;
-    var base64 = e.target.result.split(',')[1];
-    analyzeReceiptWithAI(base64, file.type || 'image/jpeg');
+    var dataUrl = e.target.result;
+    if (img)  img.src = dataUrl;
+    if (wrap) wrap.style.display = 'block';
+    if (status) status.innerHTML = '<span style="color:var(--gold)">🤖 Gemini analizando tu factura...</span>';
+
+    var base64 = dataUrl.split(',')[1];
+    var mime   = file.type || 'image/jpeg';
+    analyzeWithGemini(base64, mime);
   };
   reader.readAsDataURL(file);
   event.target.value = '';
 }
-function analyzeReceiptWithAI(base64, mimeType) {
+
+function analyzeWithGemini(base64, mime) {
   var status = document.getElementById('scan-status');
-  if (status) status.textContent = '🤖 IA leyendo la factura...';
-  var today = new Date().toISOString().slice(0,10);
-  var catsAvail = CAT_LIST.map(function(c){ return c[0]; }).slice(0,15).join(', ');
-  var jsonExample = '{"descripcion":"...","monto":0.00,"moneda":"DOP","categoria":"...","fecha":"' + today + '"}';
-  var prompt = 'Analiza esta factura. Extrae: descripcion del negocio, monto total, moneda (USD o DOP), y categoria de esta lista: ' + catsAvail + '. Responde SOLO en JSON: ' + jsonExample;
-  var reqBody = {
-    model: 'claude-sonnet-4-6',
-    max_tokens: 300,
-    messages: [{ role: 'user', content: [
-      { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
-      { type: 'text', text: prompt }
-    ] }]
-  };
-  fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqBody)
-  }).then(function(r){ return r.json(); }).then(function(data) {
-    var text = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text.trim() : '';
-    try {
-      var start = text.indexOf('{'), end = text.lastIndexOf('}');
-      var parsed = start >= 0 ? JSON.parse(text.slice(start, end + 1)) : {};
-      showScanResult(parsed);
-    } catch (e) {
-      showScanResult({ descripcion: '', monto: 0, moneda: 'DOP', categoria: CAT_LIST[CAT_LIST.length-1][0], fecha: today });
-    }
-  }).catch(function() {
-    if (status) status.textContent = '⚠️ Sin conexión o error. Completa el gasto manualmente.';
-    showScanResult({ descripcion: '', monto: 0, moneda: 'DOP', categoria: CAT_LIST[CAT_LIST.length-1][0], fecha: today });
-  });
-}
-function showScanResult(data) {
-  var status = document.getElementById('scan-status');
-  if (status) {
-    status.innerHTML = '✅ <strong style="color:var(--green)">Factura leída</strong> — revisa los datos y guarda.';
+  var today  = new Date().toISOString().slice(0,10);
+
+  // If no proxy configured, go straight to manual mode
+  if (!GEMINI_PROXY) {
+    if (status) status.innerHTML = '📋 <strong style="color:var(--gold)">Foto lista</strong> — completa los datos del recibo.';
+    setTimeout(function() { scanFallback(status, today); }, 800);
+    return;
   }
-  // Pre-fill DATA fields then open the normal gasto sheet with values
-  _selCat = data.categoria || CAT_LIST[CAT_LIST.length-1][0];
-  _gastoMon = data.moneda === 'USD' ? 'USD' : 'DOP';
-  _scanPrefill = { desc: data.descripcion || '', monto: data.monto > 0 ? data.monto : '', fecha: data.fecha || new Date().toISOString().slice(0,10) };
-  setTimeout(function() { openSheet('add-gasto'); }, 700);
+
+  var cats = CAT_LIST.map(function(c){ return c[0]; }).slice(0, 18).join(', ');
+  var prompt = 'Analiza esta factura. Extrae: nombre del negocio, monto total, moneda (USD o DOP), categoría de esta lista: ' + cats + '. Responde SOLO JSON: {"descripcion":"...","monto":0.00,"moneda":"DOP","categoria":"...","fecha":"' + today + '"}';
+
+  try {
+    fetch(GEMINI_PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: base64, mime: mime, prompt: prompt })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      try {
+        var text = (data.text || '').replace(/```json|```/g, '').trim();
+        var s = text.indexOf('{'), e2 = text.lastIndexOf('}');
+        if (s < 0) throw new Error();
+        var parsed = JSON.parse(text.slice(s, e2 + 1));
+        if (parsed.monto > 0) { applyScanResult(parsed, status); return; }
+      } catch(e) {}
+      scanFallback(status, today);
+    })
+    .catch(function() { scanFallback(status, today); });
+  } catch(e) {
+    scanFallback(status, today);
+  }
 }
-function confirmScanGasto() { saveGasto(); }
+
+function applyScanResult(data, status) {
+  // Pre-fill wizard state with extracted data
+  _wgMonto   = parseFloat(data.monto) || 0;
+  _wgDesc    = data.descripcion || '';
+  _wgFecha   = data.fecha || new Date().toISOString().slice(0,10);
+  _gastoMon  = (data.moneda === 'USD') ? 'USD' : 'DOP';
+  _selCat    = data.categoria || '';
+  _wgStep    = 1;
+
+  if (status) status.innerHTML =
+    '✅ <strong style="color:var(--green)">Extraído:</strong> ' +
+    (data.descripcion ? '<strong>' + data.descripcion + '</strong> — ' : '') +
+    (_gastoMon === 'USD' ? '$' : 'RD$') + parseFloat(data.monto).toFixed(2) +
+    ' · ' + (data.categoria || '') +
+    '<br><span style="font-size:11px;color:var(--t3)">Revisa y ajusta si es necesario</span>';
+
+  setTimeout(function() {
+    // Go directly to step 2 (category) since monto already filled, or step 1 if monto=0
+    if (_wgMonto > 0) {
+      _wgStep = 2;
+      var sc = document.getElementById('sheet-content');
+      if (sc) sc.innerHTML = _buildWizardStep(2, null);
+      // Auto-select the category if it matches
+      setTimeout(function() {
+        if (_selCat) {
+          document.querySelectorAll('.cat-btn').forEach(function(btn) {
+            if (btn.textContent.trim().indexOf(_selCat.trim().slice(-6)) >= 0) {
+              btn.classList.add('sel');
+            }
+          });
+        }
+      }, 100);
+    } else {
+      var sc = document.getElementById('sheet-content');
+      if (sc) sc.innerHTML = _buildWizardStep(1, null);
+    }
+  }, 1500);
+}
+
+function scanFallback(status, today) {
+  if (status) status.innerHTML = '⚠️ No pude leer la factura. <br><span style="font-size:11px;color:var(--t3)">Ingresa los datos manualmente.</span>';
+  setTimeout(function() {
+    _wgStep = 1; _wgMonto = 0; _wgDesc = ''; _wgFecha = today; _gastoMon = 'DOP'; _selCat = '';
+    var sc = document.getElementById('sheet-content');
+    if (sc) sc.innerHTML = _buildWizardStep(1, null);
+  }, 1500);
+}
 
 function buildTasaSheet() {
   return '<div class="step-header"><div class="step-title">Tasa USD / DOP</div></div>' +
