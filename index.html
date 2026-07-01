@@ -2543,19 +2543,19 @@ function _wgNext1() {
   _wgDesc = v('gf-desc') || '';
   _wgFecha = v('gf-fecha') || new Date().toISOString().slice(0,10);
   _wgStep = 2;
-  var sheet = document.querySelector('.bottom-sheet');
-  if (sheet) sheet.innerHTML = _buildWizardStep(2, null);
+  var sc = document.getElementById('sheet-content');
+  if (sc) sc.innerHTML = _buildWizardStep(2, null);
 }
 function _wgNext2() {
   if (!_selCat) { showToast('Selecciona una categoría'); return; }
   _wgStep = 3;
-  var sheet = document.querySelector('.bottom-sheet');
-  if (sheet) sheet.innerHTML = _buildWizardStep(3, null);
+  var sc = document.getElementById('sheet-content');
+  if (sc) sc.innerHTML = _buildWizardStep(3, null);
 }
 function _wgBack() {
   _wgStep = Math.max(1, _wgStep - 1);
-  var sheet = document.querySelector('.bottom-sheet');
-  if (sheet) sheet.innerHTML = _buildWizardStep(_wgStep, null);
+  var sc = document.getElementById('sheet-content');
+  if (sc) sc.innerHTML = _buildWizardStep(_wgStep, null);
 }
 
 
@@ -3422,8 +3422,9 @@ function sendIAMessage() {
     var reply = _localAIAnswer(msg);
     _iaHistory[_iaHistory.length - 1].content = reply;
     _iaBusy = false;
-    var sheet = document.querySelector('.bottom-sheet');
-    if (sheet) sheet.innerHTML = buildIASheet();
+    // Update only sheet-content, NOT the entire bottom-sheet (which would break the DOM)
+    var sc = document.getElementById('sheet-content');
+    if (sc) sc.innerHTML = buildIASheet();
     var m2 = document.getElementById('ia-msgs');
     if (m2) m2.scrollTop = m2.scrollHeight;
   }, 600);
