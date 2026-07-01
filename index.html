@@ -1193,8 +1193,7 @@ canvas { max-width: 100%; display: block; }
       <div class="score-card" id="score-section" style="text-align:center;padding:28px 20px 20px">
         <div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px">SCORE FINANCIERO</div>
         <div class="score-number" id="score-num" style="font-size:80px;line-height:1">—</div>
-        <div class="score-label" id="score-label" style="font-size:16px;margin:8px 0 4px">Sin datos</div>
-        <div id="score-badge" style="margin-bottom:20px"></div>
+        <div id="score-badge" style="margin:10px 0 20px"></div>
         <div class="score-factors" id="score-factors" style="text-align:left"></div>
       </div>
 
@@ -1991,7 +1990,6 @@ function refreshHome() {
   // Score
   var sc = SCORE.run();
   el('score-num', sc.total);
-  el('score-label', sc.label);
   el('home-score-mini', sc.total);
   var sbEl = document.getElementById('score-badge');
   if (sbEl) sbEl.innerHTML = '<span class="badge ' + sc.badgeClass + '">' + sc.label + '</span>';
@@ -3359,7 +3357,7 @@ function buildIASheet() {
     var isUser = m.role === 'user';
     return '<div style="display:flex;justify-content:' + (isUser?'flex-end':'flex-start') + ';margin-bottom:10px">' +
       '<div style="max-width:82%;padding:10px 14px;border-radius:' + (isUser?'18px 18px 4px 18px':'18px 18px 18px 4px') + ';background:' + (isUser?'var(--gold-dim)':'var(--surface)') + ';border:1px solid ' + (isUser?'rgba(201,169,110,0.3)':'var(--border)') + ';font-size:14px;color:var(--t1);line-height:1.5">' +
-      m.content + '</div></div>';
+      (isUser ? m.content : mdToHtml(m.content)) + '</div></div>';
   }).join('');
   return '<div class="step-header" style="border-bottom:1px solid var(--border);margin-bottom:0">' +
     '<button class="step-back" onclick="closeSheet();_iaHistory=[]">←</button>' +
@@ -3387,6 +3385,13 @@ function openIAWithQuestion(q) {
   }, 100);
 }
 
+function mdToHtml(text) {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    .replace(/\n/g, '<br>');
+}
+
 function sendIAMessage() {
   if (_iaBusy) return;
   var inp = document.getElementById('ia-input');
@@ -3405,7 +3410,7 @@ function sendIAMessage() {
     msgsEl.innerHTML = _iaHistory.map(function(m){
       var isUser = m.role === 'user';
       return '<div style="display:flex;justify-content:' + (isUser?'flex-end':'flex-start') + ';margin-bottom:10px">' +
-        '<div style="max-width:82%;padding:10px 14px;border-radius:' + (isUser?'18px 18px 4px 18px':'18px 18px 18px 4px') + ';background:' + (isUser?'var(--gold-dim)':'var(--surface)') + ';border:1px solid ' + (isUser?'rgba(201,169,110,0.3)':'var(--border)') + ';font-size:14px;color:var(--t1);line-height:1.5">' + m.content + '</div></div>';
+        '<div style="max-width:82%;padding:10px 14px;border-radius:' + (isUser?'18px 18px 4px 18px':'18px 18px 18px 4px') + ';background:' + (isUser?'var(--gold-dim)':'var(--surface)') + ';border:1px solid ' + (isUser?'rgba(201,169,110,0.3)':'var(--border)') + ';font-size:14px;color:var(--t1);line-height:1.5">' + (isUser ? m.content : mdToHtml(m.content)) + '</div></div>';
     }).join('');
     msgsEl.scrollTop = msgsEl.scrollHeight;
   }
