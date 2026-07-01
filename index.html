@@ -63,19 +63,36 @@
 
 /* ── Light mode ── */
 [data-theme="light"] {
-  --bg:      #f8f7f4;
-  --bg2:     #f0ede8;
-  --bg3:     #e8e4de;
+  --bg:      #f5f4f0;
+  --bg2:     #edeae4;
+  --bg3:     #e4e0d8;
   --surface: #ffffff;
-  --border:  rgba(0,0,0,0.06);
-  --border2: rgba(0,0,0,0.1);
+  --border:  rgba(0,0,0,0.08);
+  --border2: rgba(0,0,0,0.12);
   --t1: #111111;
-  --t2: #666666;
-  --t3: #aaaaaa;
-  --gold: #9a6f32;
-  --gold-dim: rgba(154,111,50,0.1);
-  --g-card: linear-gradient(145deg,#ffffff 0%,#f8f7f4 100%);
+  --t2: #555555;
+  --t3: #999999;
+  --gold: #8a6020;
+  --gold-dim: rgba(138,96,32,0.1);
+  --gold-glow: rgba(138,96,32,0.25);
+  --g-card: linear-gradient(145deg,#ffffff 0%,#f5f4f0 100%);
+  --green-bg: #dcfce7;
+  --green-bdr: #86efac;
+  --red-bg: #fee2e2;
+  --red-bdr: #fca5a5;
+  --blue-bg: #dbeafe;
+  --btn-bg: #111111;
 }
+[data-theme="light"] .balance-card { background: linear-gradient(145deg,#1a1a2e 0%,#16213e 100%); }
+[data-theme="light"] .score-card { background: #1a1a2e; }
+[data-theme="light"] .bank-card.gold { background: linear-gradient(145deg,#8a6020,#b8883a); }
+[data-theme="light"] .bank-card.dark { background: linear-gradient(145deg,#2d2d2d,#1a1a1a); }
+[data-theme="light"] .ai-card { background: #1a1a2e; border-color: rgba(96,165,250,0.2); }
+[data-theme="light"] .ai-card .ai-title, [data-theme="light"] .ai-card .ai-insight { color: #e2e8f0; }
+[data-theme="light"] .navbar { background: #ffffff; box-shadow: 0 -1px 0 rgba(0,0,0,0.08); }
+[data-theme="light"] .nb { color: #888888; }
+[data-theme="light"] .nb.active { color: var(--gold); }
+[data-theme="light"] #landing { background: #050505; }
 
 /* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -1112,6 +1129,17 @@ canvas { max-width: 100%; display: block; }
       <!-- Balance hero -->
       <div class="balance-card">
         <div class="balance-label">Disponible este mes</div>
+        <div id="bal-split" style="display:none;gap:12px;margin-bottom:6px">
+          <div style="flex:1;background:rgba(255,255,255,0.08);border-radius:12px;padding:10px 12px">
+            <div style="font-size:10px;color:rgba(255,255,255,0.5);font-weight:700;margin-bottom:4px">🇺🇸 CUENTA USA</div>
+            <div style="font-size:20px;font-weight:800;color:#fff" id="bal-usd-us">$0.00</div>
+          </div>
+          <div style="flex:1;background:rgba(255,255,255,0.08);border-radius:12px;padding:10px 12px">
+            <div style="font-size:10px;color:rgba(255,255,255,0.5);font-weight:700;margin-bottom:4px">🇩🇴 CUENTA RD</div>
+            <div style="font-size:18px;font-weight:800;color:#fff" id="bal-usd-rd">$0.00</div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.6)" id="bal-dop-rd">RD$0</div>
+          </div>
+        </div>
         <div class="balance-amount" id="bal-amount">$0.00</div>
         <div class="balance-change up" id="bal-change">— vs mes anterior</div>
         <div class="donut-row">
@@ -1519,6 +1547,10 @@ function load() {
       DATA = Object.assign({}, DATA, parsed);
     }
   } catch(e) {}
+  // Always sync to real current month/year — never stay stuck on a past month
+  var now = new Date();
+  DATA.curMonth = now.getMonth();
+  DATA.curYear = now.getFullYear();
 }
 
 // ─── HELPERS ──────────────────────────────────────────────
@@ -1885,8 +1917,30 @@ function refreshHome() {
 
   // Balance — "Disponible este mes" = ingresos - gastos del mes actual
   var avail = tI - tG;
-  // If no income recorded yet but has bank balance, show bank as reference
-  var availDisplay = (tI === 0 && tBan > 0) ? tBan : Math.max(0, avail);
+  var hasAnyIncome = DATA.ingresos.length > 0;
+  // Show bank balance only if user has never registered any income at all
+  var availDisplay = (!hasAnyIncome && tBan > 0) ? tBan : Math.max(0, avail);
+
+  // Split balance: USA accounts (USD) vs RD accounts
+  var bancos = DATA.bancos || [];
+  var banUSA = bancos.filter(function(b){ return !b.esTarjeta && b.pais === 'US'; });
+  var banRD  = bancos.filter(function(b){ return !b.esTarjeta && b.pais !== 'US'; });
+  var totalUSA_USD = banUSA.reduce(function(a,b){ return a + toUSD(b.bal||0, b.mon); }, 0);
+  var totalRD_USD  = banRD.reduce(function(a,b){ return a + toUSD(b.bal||0, b.mon); }, 0);
+  var totalRD_DOP  = banRD.reduce(function(a,b){ return a + (b.mon==='DOP' ? (b.bal||0) : (b.bal||0)*DATA.tasa); }, 0);
+  var splitEl = document.getElementById('bal-split');
+  var balAmtEl = document.getElementById('bal-amount');
+  if (banUSA.length > 0 && banRD.length > 0) {
+    // Show split view
+    if (splitEl) splitEl.style.display = 'flex';
+    if (balAmtEl) balAmtEl.style.display = 'none';
+    var e1 = document.getElementById('bal-usd-us'); if (e1) e1.textContent = fmt(totalUSA_USD, 'USD');
+    var e2 = document.getElementById('bal-usd-rd'); if (e2) e2.textContent = fmt(totalRD_USD, 'USD');
+    var e3 = document.getElementById('bal-dop-rd'); if (e3) e3.textContent = 'RD$' + Math.round(totalRD_DOP).toLocaleString('es-DO');
+  } else {
+    if (splitEl) splitEl.style.display = 'none';
+    if (balAmtEl) balAmtEl.style.display = '';
+  }
 
   // Month label
   el('mnl', MONTHS[cur] + ' ' + curY);
@@ -2041,13 +2095,14 @@ function refreshHome() {
     elHTML('payments-list', '<div class="empty-state"><div class="empty-icon">📅</div><div class="empty-text">Sin pagos próximos</div></div>');
   }
 
-  // Quick history (last 8 transactions sorted by date)
-  var all = [];
-  curIngs.forEach(function(x) { all.push({ tipo: 'ingreso', label: x.fuente || x.desc, sub: x.fecha || '', amount: x.monto, mon: x.mon }); });
-  curGas.forEach(function(x) { all.push({ tipo: 'gasto', label: x.cat, sub: x.desc || x.fecha || '', amount: x.monto, mon: x.mon }); });
-  all = all.slice(-8).reverse();
-  if (all.length) {
-    var hh = all.map(function(t) {
+  // Quick history — last 8 transactions across ALL months, sorted by date desc
+  var allTx = [];
+  (DATA.ingresos||[]).forEach(function(x) { allTx.push({ tipo:'ingreso', label:x.fuente||x.desc||'Ingreso', sub:x.fecha||'', amount:x.monto, mon:x.mon, fecha:x.fecha||'' }); });
+  (DATA.gastos||[]).forEach(function(x) { allTx.push({ tipo:'gasto', label:x.cat||'Gasto', sub:x.desc||x.fecha||'', amount:x.monto, mon:x.mon, fecha:x.fecha||'' }); });
+  allTx.sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
+  var recent = allTx.slice(0, 8);
+  if (recent.length) {
+    var hh = recent.map(function(t) {
       var icon = t.tipo === 'ingreso' ? '💵' : getCatIcon(t.label);
       var amtCls = t.tipo === 'ingreso' ? 'amount-pos' : 'amount-neg';
       var sign = t.tipo === 'ingreso' ? '+' : '-';
@@ -2061,7 +2116,7 @@ function refreshHome() {
     }).join('');
     elHTML('home-history', hh);
   } else {
-    elHTML('home-history', '<div class="empty-state"><div class="empty-icon">📒</div><div class="empty-text">Sin transacciones este mes</div></div>');
+    elHTML('home-history', '<div class="empty-state"><div class="empty-icon">📒</div><div class="empty-text">Sin transacciones registradas</div></div>');
   }
   // Achievements and animated counters
   updLogros();
@@ -2089,9 +2144,25 @@ function refreshCuentas() {
     var cardColors = ['gold','dark','blue','dark','gold'];
     var banksHTML = DATA.bancos.slice(0, 5).map(function(b, i) {
       var st = b.esTarjeta ? ccStatus(b) : null;
+      // For credit cards with DOP limit, show both DOP and USD balances
+      var amountLine = '';
+      if (b.esTarjeta) {
+        if (b.saldoDOP > 0 && b.saldoUSD > 0) {
+          amountLine = '<div class="bc-amount">' + fmt(b.saldoUSD||0,'USD') + '</div>' +
+            '<div style="font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:2px">RD$' + Math.round((b.saldoDOP||0)).toLocaleString('es-DO') + '</div>';
+        } else {
+          amountLine = '<div class="bc-amount">' + fmt(b.saldoUSD||0,'USD') + '</div>';
+        }
+      } else if (b.mon === 'DOP') {
+        var usdEq = Math.round(toUSD(b.bal||0,'DOP') * 100) / 100;
+        amountLine = '<div class="bc-amount">RD$' + Math.round(b.bal||0).toLocaleString('es-DO') + '</div>' +
+          '<div style="font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:2px">≈ ' + fmt(usdEq,'USD') + '</div>';
+      } else {
+        amountLine = '<div class="bc-amount">' + fmt(Math.abs(b.bal||0), b.mon) + '</div>';
+      }
       return '<div class="bank-card ' + (cardColors[i%3]) + '" onclick="openSheet(\'edit-banco\','+b.id+')">' +
         '<div class="bc-bank">' + (b.nom || b.banco) + '</div>' +
-        '<div class="bc-amount">' + fmt(b.esTarjeta ? (b.saldoUSD||0) : Math.abs(b.bal||0), b.mon) + '</div>' +
+        amountLine +
         '<div class="bc-label">' + (b.esTarjeta ? 'Debes' : 'Disponible') + '</div>' +
         '<div class="bc-bottom"><span class="bc-type">' + (b.tipo||'Cuenta') + '</span>' +
         (b.ultimos ? '<span class="bc-digits">···' + b.ultimos + '</span>' : '') +
@@ -2599,7 +2670,6 @@ function selSource(el2, id) {
 }
 
 function saveGasto() {
-  // In wizard flow, values come from state vars; in scan-prefill direct-form flow, from inputs
   var monto = _wgMonto > 0 ? _wgMonto : parseFloat(v('gf-monto'));
   if (!monto || monto <= 0) { showToast('Ingresa un monto'); return; }
   if (!_selCat) { showToast('Selecciona una categoría'); return; }
@@ -2607,11 +2677,32 @@ function saveGasto() {
   var desc = (_wgStep > 1) ? _wgDesc : (v('gf-desc') || '');
   var d = dateInfo(fecha);
   DATA.gastos.push({ id: Date.now(), monto: monto, mon: _gastoMon, cat: _selCat, desc: desc, fecha: fecha, month: d.month, year: d.year, source: _selSource });
-  // Deduct from bank if source selected
+
+  // Deduct from bank or credit card
   if (_selSource && _selSource.startsWith('banco_')) {
     var idx = parseInt(_selSource.split('_')[1]);
-    if (DATA.bancos[idx]) {
-      DATA.bancos[idx].bal = (DATA.bancos[idx].bal || 0) - monto;
+    var banco = DATA.bancos[idx];
+    if (banco) {
+      if (banco.esTarjeta) {
+        // Credit card — increase saldo (what's owed), decrease disponible
+        if (_gastoMon === 'USD') {
+          banco.saldoUSD = Math.round(((banco.saldoUSD||0) + monto)*100)/100;
+          banco.dispUSD  = Math.max(0, Math.round(((banco.dispUSD||0) - monto)*100)/100);
+        } else {
+          banco.saldoDOP = Math.round(((banco.saldoDOP||0) + monto)*100)/100;
+          banco.dispDOP  = Math.max(0, Math.round(((banco.dispDOP||0) - monto)*100)/100);
+        }
+        banco.bal = banco.saldoUSD || 0;
+        // Sync linked deuda
+        var deuda = (DATA.deudas||[]).find(function(dd){ return dd.tcId === banco.id; });
+        if (deuda) {
+          deuda.bal = banco.saldoUSD || 0;
+          if (deuda.bal > 0) deuda.estado = 'Activo';
+        }
+      } else {
+        // Regular bank account — deduct balance
+        banco.bal = Math.round(((banco.bal||0) - monto)*100)/100;
+      }
     }
   }
   save(); closeSheet(); refreshHome(); refreshCuentas();
@@ -2768,9 +2859,25 @@ function deleteMeta(i) {
 function abonarMeta(i) {
   var m = DATA.metas[i];
   if (!m) return;
-  var monto = parseFloat(prompt('¿Cuánto vas a abonar a "' + m.nom + '"?') || '0');
-  if (!monto || monto <= 0) return;
-  m.actual = (m.actual || 0) + monto;
+  openSheetWith(
+    '<div class="step-header"><button class="step-back" onclick="openSheet(\'add-meta\')">←</button>' +
+    '<div class="step-title">+ Abonar a meta</div>' +
+    '<div class="step-sub">' + m.nom + ' — ' + fmt(m.actual||0,m.mon) + ' / ' + fmt(m.total||0,m.mon) + '</div></div>' +
+    '<div style="padding:0 16px 24px">' +
+    '<div class="amount-input-wrap" style="margin-bottom:16px">' +
+      '<div class="amount-currency">' + (m.mon||'USD') + '</div>' +
+      '<input class="amount-big" id="abono-monto" type="number" placeholder="0.00" inputmode="decimal" autofocus>' +
+    '</div>' +
+    '<button class="btn-full" onclick="confirmarAbono(' + i + ')">✓ Abonar</button>' +
+    '</div>'
+  );
+}
+function confirmarAbono(i) {
+  var m = DATA.metas[i];
+  if (!m) return;
+  var monto = parseFloat(v('abono-monto'));
+  if (!monto || monto <= 0) { showToast('Ingresa un monto válido'); return; }
+  m.actual = Math.round(((m.actual||0) + monto) * 100) / 100;
   if (DATA.ahorros && DATA.ahorros[i]) DATA.ahorros[i].actual = m.actual;
   save(); openSheet('add-meta');
   showToast('✓ +' + fmt(monto, m.mon) + ' abonado a ' + m.nom);
@@ -2789,30 +2896,88 @@ function buildEditBancoSheet(bancoId) {
   var b = DATA.bancos.find(function(x){ return x.id === bancoId; });
   if (!b) return '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button><div class="step-title">Cuenta no encontrada</div></div>';
   var icon = b.esTarjeta ? '💳' : '🏦';
+  var isRD  = b.pais !== 'US'; // RD card — shows DOP + USD
+  var isCard = b.esTarjeta;
+
+  // Info rows
+  var infoRows =
+    '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;color:var(--t3)">BANCO</span><span style="font-size:14px;font-weight:700;color:var(--t1)">' + b.banco + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;color:var(--t3)">TIPO</span><span style="font-size:14px;font-weight:700;color:var(--t1)">' + (b.tipo||'Cuenta') + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;color:var(--t3)">PAÍS</span><span style="font-size:14px;font-weight:700;color:var(--t1)">' + (b.pais==='US'?'🇺🇸 USA':'🇩🇴 RD') + '</span></div>';
+
+  if (isCard) {
+    if (isRD) {
+      // RD credit card — show limit and owed in both USD and DOP
+      infoRows +=
+        '<div style="height:1px;background:var(--border);margin:8px 0"></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+          '<div style="background:var(--bg3);border-radius:8px;padding:8px;text-align:center"><div style="font-size:10px;color:var(--t3);margin-bottom:3px">LÍMITE USD</div><div style="font-size:15px;font-weight:800;color:var(--t1)">' + fmt(b.limUSD||0,'USD') + '</div></div>' +
+          '<div style="background:var(--bg3);border-radius:8px;padding:8px;text-align:center"><div style="font-size:10px;color:var(--t3);margin-bottom:3px">LÍMITE DOP</div><div style="font-size:15px;font-weight:800;color:var(--t1)">RD$' + Math.round(b.limDOP||0).toLocaleString('es-DO') + '</div></div>' +
+          '<div style="background:var(--red-bg);border-radius:8px;padding:8px;text-align:center"><div style="font-size:10px;color:var(--red);margin-bottom:3px">DEBES USD</div><div style="font-size:15px;font-weight:800;color:var(--red)">' + fmt(b.saldoUSD||0,'USD') + '</div></div>' +
+          '<div style="background:var(--red-bg);border-radius:8px;padding:8px;text-align:center"><div style="font-size:10px;color:var(--red);margin-bottom:3px">DEBES DOP</div><div style="font-size:15px;font-weight:800;color:var(--red)">RD$' + Math.round(b.saldoDOP||0).toLocaleString('es-DO') + '</div></div>' +
+        '</div>';
+    } else {
+      // USA credit card — USD only
+      infoRows +=
+        '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;color:var(--t3)">LÍMITE</span><span style="font-size:14px;font-weight:700;color:var(--t1)">' + fmt(b.limUSD||0,'USD') + '</span></div>' +
+        '<div style="display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--t3)">DEBES</span><span style="font-size:14px;font-weight:900;color:var(--red)">' + fmt(b.saldoUSD||0,'USD') + '</span></div>';
+    }
+  } else {
+    // Regular bank account
+    infoRows += '<div style="display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--t3)">BALANCE</span><span style="font-size:16px;font-weight:900;color:var(--gold)">' + (b.mon==='DOP'?'RD$'+Math.round(b.bal||0).toLocaleString('es-DO'):fmt(b.bal||0,b.mon)) + '</span></div>';
+    if (isRD && b.mon === 'DOP') {
+      var usdEq = Math.round(toUSD(b.bal||0,'DOP')*100)/100;
+      infoRows += '<div style="font-size:12px;color:var(--t3);text-align:right;margin-top:3px">≈ ' + fmt(usdEq,'USD') + '</div>';
+    }
+  }
+
+  // Edit fields — cards show disponible sliders, accounts show balance
+  var editFields = '';
+  if (isCard && isRD) {
+    editFields =
+      '<div style="font-size:12px;font-weight:700;color:var(--t3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px">Actualizar disponible</div>' +
+      '<div class="form-row">' +
+        '<div class="form-field"><label>Disponible USD</label><input id="edit-banco-disp-usd" type="number" inputmode="decimal" placeholder="0.00" value="' + (b.dispUSD||0) + '"></div>' +
+        '<div class="form-field"><label>Disponible DOP</label><input id="edit-banco-disp-dop" type="number" inputmode="decimal" placeholder="0" value="' + (b.dispDOP||0) + '"></div>' +
+      '</div>';
+  } else if (isCard) {
+    editFields =
+      '<div class="form-field"><label>Disponible USD</label><input id="edit-banco-disp-usd" type="number" inputmode="decimal" placeholder="0.00" value="' + (b.dispUSD||0) + '"></div>';
+  } else {
+    editFields =
+      '<div class="form-field"><label>Actualizar balance (' + (b.mon||'DOP') + ')</label><input id="edit-banco-bal" type="number" inputmode="decimal" placeholder="' + (b.bal||0) + '" value="' + (b.bal||0) + '"></div>';
+  }
+
   return '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button>' +
     '<div class="step-title">' + icon + ' ' + (b.nom || b.banco) + '</div>' +
     '<div class="step-sub">' + (b.tipo||'Cuenta') + (b.ultimos?' · ···'+b.ultimos:'') + '</div></div>' +
     '<div style="padding:0 16px 24px">' +
-    // Info card
-    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 16px;margin-bottom:16px">' +
-      '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;color:var(--t3)">BANCO</span><span style="font-size:14px;font-weight:700;color:var(--t1)">' + b.banco + '</span></div>' +
-      '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;color:var(--t3)">MONEDA</span><span style="font-size:14px;font-weight:700;color:var(--t1)">' + (b.mon||'DOP') + '</span></div>' +
-      '<div style="display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--t3)">BALANCE ACTUAL</span><span style="font-size:16px;font-weight:900;color:var(--gold)">' + fmt(b.bal||0, b.mon) + '</span></div>' +
-    '</div>' +
-    // Edit balance
-    '<div class="form-field"><label>Actualizar balance</label>' +
-    '<input id="edit-banco-bal" type="number" inputmode="decimal" placeholder="' + (b.bal||0) + '" value="' + (b.bal||0) + '"></div>' +
-    '<button class="btn-full" onclick="updateBancoBalance(' + bancoId + ')" style="margin-bottom:12px">💾 Guardar balance</button>' +
-    // Delete
+    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 16px;margin-bottom:16px">' + infoRows + '</div>' +
+    editFields +
+    '<button class="btn-full" onclick="updateBancoBalance(' + bancoId + ')" style="margin-bottom:12px">💾 Guardar cambios</button>' +
     '<button onclick="deleteBanco(' + bancoId + ')" style="width:100%;padding:14px;background:var(--red-bg);border:1px solid var(--red-bdr);border-radius:var(--r-md);color:var(--red);font-size:14px;font-weight:700;cursor:pointer">🗑️ Eliminar esta cuenta</button>' +
     '</div>';
 }
 function updateBancoBalance(bancoId) {
   var b = DATA.bancos.find(function(x){ return x.id === bancoId; });
   if (!b) return;
-  var newBal = parseFloat(v('edit-banco-bal'));
-  if (isNaN(newBal)) { showToast('Ingresa un balance válido'); return; }
-  b.bal = newBal;
+  if (b.esTarjeta) {
+    // Update disponible and recalculate saldo
+    var dispUSD = parseFloat(v('edit-banco-disp-usd')) || 0;
+    var dispDOP = b.pais !== 'US' ? (parseFloat(v('edit-banco-disp-dop')) || 0) : 0;
+    b.dispUSD = dispUSD;
+    b.dispDOP = dispDOP;
+    b.saldoUSD = Math.max(0, Math.round(((b.limUSD||0) - dispUSD)*100)/100);
+    b.saldoDOP = b.pais !== 'US' ? Math.max(0, Math.round(((b.limDOP||0) - dispDOP)*100)/100) : 0;
+    b.bal = b.saldoUSD;
+    // Sync linked deuda if exists
+    var deuda = (DATA.deudas||[]).find(function(d){ return d.tcId === b.id; });
+    if (deuda) { deuda.bal = b.saldoUSD; if (b.saldoUSD===0) deuda.estado='Pagado'; }
+  } else {
+    var newBal = parseFloat(v('edit-banco-bal'));
+    if (isNaN(newBal)) { showToast('Ingresa un balance válido'); return; }
+    b.bal = newBal;
+  }
   save(); closeSheet(); refreshCuentas(); refreshHome();
   showToast('Balance actualizado ✓');
 }
@@ -2922,6 +3087,186 @@ function ccStatus(tc) {
   return { cls: 'badge-green', txt: '✅ Disponible' };
 }
 function dU(ds) { if (!ds) return null; var d = new Date(ds + 'T12:00:00'), n = new Date(); n.setHours(0,0,0,0); return Math.round((d - n) / 86400000); }
+function buildPagarDeudaSheet(deudaId) {
+  var deuda = DATA.deudas.find(function(d){ return d.id === deudaId; });
+  if (!deuda) return '<div style="padding:20px"><p style="color:var(--t2)">Deuda no encontrada.</p></div>';
+
+  // Find linked credit card — try tcId first, then match by name
+  var tc = null;
+  if (deuda.tcId) {
+    tc = DATA.bancos.find(function(b){ return b.id === deuda.tcId; });
+  }
+  if (!tc) {
+    tc = DATA.bancos.find(function(b){ return b.esTarjeta && (b.nom===deuda.nom || b.banco===deuda.nom || (b.nom||'').toLowerCase().indexOf(deuda.nom.toLowerCase())>=0); });
+  }
+  // Sync tcId if found now
+  if (tc && !deuda.tcId) deuda.tcId = tc.id;
+
+  // Determine if this is an RD card with dual-currency
+  var saldoUSD = tc ? (tc.saldoUSD||0) : (deuda.mon==='USD' ? (deuda.bal||0) : 0);
+  var saldoDOP = tc ? (tc.saldoDOP||0) : (deuda.mon==='DOP' ? (deuda.bal||0) : 0);
+  var isRDCard = tc && tc.pais !== 'US' && (saldoDOP > 0 || (tc.limDOP||0) > 0);
+  var hasBothBalances = saldoUSD > 0 && saldoDOP > 0;
+  var tasa = DATA.tasa || 58.85;
+
+  // Accounts split by currency
+  var cuentasUSD = DATA.bancos.filter(function(b){ return !b.esTarjeta && b.mon === 'USD' && (b.bal||0) > 0; });
+  var cuentasDOP = DATA.bancos.filter(function(b){ return !b.esTarjeta && b.mon === 'DOP' && (b.bal||0) > 0; });
+  var todasCuentas = DATA.bancos.filter(function(b){ return !b.esTarjeta; });
+
+  function cuentaOpt(b) {
+    return '<option value="' + b.id + '">' + b.banco + (b.ultimos?' ···'+b.ultimos:'') + ' — ' + (b.mon==='DOP'?'RD$'+Math.round(b.bal||0).toLocaleString('es-DO'):fmt(b.bal||0,'USD')) + '</option>';
+  }
+
+  var html = '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button>' +
+    '<div class="step-title">💳 Pagar deuda</div>' +
+    '<div class="step-sub">' + deuda.nom + '</div></div>' +
+    '<div style="padding:0 16px 24px">';
+
+  // ── Saldos pendientes ──
+  if (isRDCard) {
+    html += '<div style="background:var(--red-bg);border:1px solid var(--red-bdr);border-radius:var(--r-md);padding:14px 16px;margin-bottom:16px">' +
+      '<div style="font-size:11px;color:var(--red);font-weight:700;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Saldos pendientes</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+        '<div style="text-align:center"><div style="font-size:10px;color:var(--t3);margin-bottom:3px">EN DÓLARES</div>' +
+        '<div style="font-size:20px;font-weight:900;color:' + (saldoUSD>0?'var(--red)':'var(--t3)') + '">' + fmt(saldoUSD,'USD') + '</div></div>' +
+        '<div style="text-align:center"><div style="font-size:10px;color:var(--t3);margin-bottom:3px">EN PESOS</div>' +
+        '<div style="font-size:20px;font-weight:900;color:' + (saldoDOP>0?'var(--red)':'var(--t3)') + '">RD$' + Math.round(saldoDOP).toLocaleString('es-DO') + '</div></div>' +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--t3);text-align:center;margin-top:8px">Tasa: 1 USD = ' + tasa.toFixed(2) + ' DOP</div>' +
+    '</div>';
+
+    // ── Pago en USD ──
+    if (saldoUSD > 0) {
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 16px;margin-bottom:12px">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:10px">💵 Pagar saldo en USD</div>' +
+        '<div class="form-field"><label>Monto USD a pagar</label><input id="pd-usd-monto" type="number" placeholder="0.00" inputmode="decimal" value="' + saldoUSD + '" oninput="updPagoConversion()"></div>' +
+        '<div class="form-field"><label>Pagar con</label><select id="pd-usd-cuenta" onchange="updPagoConversion()">' +
+          '<option value="">— Sin descontar de cuenta —</option>' +
+          (cuentasUSD.length ? '<optgroup label="Cuentas en USD">' + cuentasUSD.map(cuentaOpt).join('') + '</optgroup>' : '') +
+          (cuentasDOP.length ? '<optgroup label="Cuentas en DOP (conversión automática)">' + cuentasDOP.map(cuentaOpt).join('') + '</optgroup>' : '') +
+        '</select></div>' +
+        '<div id="pd-usd-conversion" style="display:none;background:var(--gold-dim);border:1px solid var(--gold);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--gold);margin-bottom:10px"></div>' +
+        '<button class="btn-full" onclick="pagarDeudaUSD(' + deudaId + ')">✅ Pagar en USD</button>' +
+      '</div>';
+    }
+
+    // ── Pago en DOP ──
+    if (saldoDOP > 0) {
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 16px;margin-bottom:12px">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:10px">🇩🇴 Pagar saldo en DOP</div>' +
+        '<div class="form-field"><label>Monto DOP a pagar</label><input id="pd-dop-monto" type="number" placeholder="0" inputmode="decimal" value="' + Math.round(saldoDOP) + '"></div>' +
+        '<div class="form-field"><label>Pagar con cuenta DOP</label><select id="pd-dop-cuenta">' +
+          '<option value="">— Sin descontar de cuenta —</option>' +
+          (cuentasDOP.length ? cuentasDOP.map(cuentaOpt).join('') : '') +
+        '</select></div>' +
+        '<button class="btn-full" onclick="pagarDeudaDOP(' + deudaId + ')">✅ Pagar en DOP</button>' +
+      '</div>';
+    }
+
+  } else {
+    // Normal deuda — single currency
+    html += '<div style="background:var(--red-bg);border:1px solid var(--red-bdr);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;text-align:center">' +
+      '<div style="font-size:10px;color:var(--red);margin-bottom:4px">SALDO PENDIENTE</div>' +
+      '<div style="font-size:24px;font-weight:900;color:var(--red)">' + fmt(deuda.bal||0, deuda.mon) + '</div>' +
+    '</div>' +
+    '<div class="form-field"><label>Monto a pagar</label><input id="pd-monto" type="number" placeholder="0.00" inputmode="decimal" value="' + (deuda.bal||0) + '"></div>' +
+    (todasCuentas.length
+      ? '<div class="form-field"><label>Pagar desde cuenta</label><select id="pd-banco"><option value="">— Sin descontar —</option>' + todasCuentas.map(cuentaOpt).join('') + '</select></div>'
+      : '<div style="background:rgba(201,169,110,0.08);border:1px solid rgba(201,169,110,0.2);border-radius:var(--r-sm);padding:10px 12px;font-size:12px;color:var(--gold);margin-bottom:12px;font-weight:600">⚠️ Sin cuentas registradas. El pago se registrará sin descontar de ninguna cuenta.</div>') +
+    '<button class="btn-full" onclick="pagarDeuda(' + deudaId + ', v(\'pd-monto\'), v(\'pd-banco\')?parseInt(v(\'pd-banco\')):null)">✅ Registrar pago</button>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function updPagoConversion() {
+  var sel = document.getElementById('pd-usd-cuenta');
+  var conv = document.getElementById('pd-usd-conversion');
+  var monto = parseFloat(v('pd-usd-monto')) || 0;
+  if (!sel || !conv) return;
+  var bancoId = parseInt(sel.value);
+  var banco = bancoId ? DATA.bancos.find(function(b){ return b.id === bancoId; }) : null;
+  if (banco && banco.mon === 'DOP' && monto > 0) {
+    var tasa = DATA.tasa || 58.85;
+    var montoEnDOP = Math.round(monto * tasa * 100) / 100;
+    conv.style.display = 'block';
+    conv.innerHTML = '🔄 Se descontarán <strong>RD$' + montoEnDOP.toLocaleString('es-DO') + '</strong> de ' + banco.banco +
+      '<br><small>(' + fmt(monto,'USD') + ' × ' + tasa.toFixed(2) + ' = RD$' + montoEnDOP.toLocaleString('es-DO') + ')</small>';
+  } else {
+    conv.style.display = 'none';
+  }
+}
+
+function pagarDeudaUSD(deudaId) {
+  var deuda = DATA.deudas.find(function(d){ return d.id === deudaId; });
+  if (!deuda) return;
+  var monto = parseFloat(v('pd-usd-monto'));
+  if (!monto || monto <= 0) { showToast('Ingresa un monto válido'); return; }
+  var bancoId = parseInt(v('pd-usd-cuenta')) || 0;
+  var banco = bancoId ? DATA.bancos.find(function(b){ return b.id === bancoId; }) : null;
+  var tasa = DATA.tasa || 58.85;
+
+  if (banco) {
+    if (banco.mon === 'USD') {
+      if (monto > (banco.bal||0)) { showToast('Fondos insuficientes: ' + fmt(banco.bal||0,'USD') + ' disponibles'); return; }
+      banco.bal = Math.round(((banco.bal||0) - monto)*100)/100;
+    } else if (banco.mon === 'DOP') {
+      var montoEnDOP = Math.round(monto * tasa * 100) / 100;
+      if (montoEnDOP > (banco.bal||0)) { showToast('Fondos insuficientes: RD$' + Math.round(banco.bal||0).toLocaleString('es-DO') + ' disponibles'); return; }
+      banco.bal = Math.round(((banco.bal||0) - montoEnDOP)*100)/100;
+    }
+  }
+
+  // Update deuda and linked card
+  deuda.bal = Math.max(0, Math.round(((deuda.bal||0) - monto)*100)/100);
+  deuda.totalPaid = (deuda.totalPaid||0) + monto;
+  if (deuda.bal === 0) deuda.estado = 'Pagado';
+  var tc = deuda.tcId ? DATA.bancos.find(function(b){ return b.id === deuda.tcId; }) : null;
+  if (tc) {
+    tc.saldoUSD = Math.max(0, Math.round(((tc.saldoUSD||0) - monto)*100)/100);
+    tc.bal = tc.saldoUSD;
+    tc.dispUSD = Math.min(tc.limUSD||0, (tc.dispUSD||0) + monto);
+    if (tc.saldoUSD === 0 && tc.saldoDOP === 0) deuda.estado = 'Pagado';
+  }
+  if (!deuda.pagos) deuda.pagos = [];
+  deuda.pagos.push({ fecha: new Date().toISOString().slice(0,10), monto: monto, mon:'USD', desde: banco?banco.banco:'Manual' });
+  // Log gasto
+  var dd = dateInfo();
+  DATA.gastos.push({ id: Date.now(), monto: monto, mon:'USD', cat:'💳 Deuda/Préstamo', desc:'Pago USD: '+deuda.nom, fecha:new Date().toISOString().slice(0,10), month:dd.month, year:dd.year });
+  save(); closeSheet(); refreshHome(); refreshCuentas();
+  showToast('✅ Pago USD registrado: ' + fmt(monto,'USD') + (banco?' desde '+banco.banco:''));
+}
+
+function pagarDeudaDOP(deudaId) {
+  var deuda = DATA.deudas.find(function(d){ return d.id === deudaId; });
+  if (!deuda) return;
+  var monto = parseFloat(v('pd-dop-monto'));
+  if (!monto || monto <= 0) { showToast('Ingresa un monto válido'); return; }
+  var bancoId = parseInt(v('pd-dop-cuenta')) || 0;
+  var banco = bancoId ? DATA.bancos.find(function(b){ return b.id === bancoId; }) : null;
+
+  if (banco) {
+    if (monto > (banco.bal||0)) { showToast('Fondos insuficientes: RD$' + Math.round(banco.bal||0).toLocaleString('es-DO') + ' disponibles'); return; }
+    banco.bal = Math.round(((banco.bal||0) - monto)*100)/100;
+  }
+
+  // Update linked card DOP balance
+  var tc = deuda.tcId ? DATA.bancos.find(function(b){ return b.id === deuda.tcId; }) : null;
+  if (tc) {
+    tc.saldoDOP = Math.max(0, Math.round(((tc.saldoDOP||0) - monto)*100)/100);
+    tc.dispDOP = Math.min(tc.limDOP||0, (tc.dispDOP||0) + monto);
+    if (tc.saldoUSD === 0 && tc.saldoDOP === 0) deuda.estado = 'Pagado';
+  }
+  if (!deuda.pagos) deuda.pagos = [];
+  deuda.pagos.push({ fecha: new Date().toISOString().slice(0,10), monto: monto, mon:'DOP', desde: banco?banco.banco:'Manual' });
+  var dd = dateInfo();
+  DATA.gastos.push({ id: Date.now(), monto: monto, mon:'DOP', cat:'💳 Deuda/Préstamo', desc:'Pago DOP: '+deuda.nom, fecha:new Date().toISOString().slice(0,10), month:dd.month, year:dd.year });
+  save(); closeSheet(); refreshHome(); refreshCuentas();
+  showToast('✅ Pago DOP registrado: RD$' + Math.round(monto).toLocaleString('es-DO') + (banco?' desde '+banco.banco:''));
+}
+
 function pagarDeuda(deudaId, monto, bancoId) {
   var deuda = DATA.deudas.find(function(d){ return d.id === deudaId; });
   if (!deuda) { showToast('Deuda no encontrada'); return; }
@@ -2930,48 +3275,24 @@ function pagarDeuda(deudaId, monto, bancoId) {
   var banco = bancoId ? DATA.bancos.find(function(b){ return b.id === bancoId; }) : null;
   if (banco) {
     if (banco.esTarjeta) { showToast('Selecciona una cuenta de banco, no una tarjeta'); return; }
-    if (monto > (banco.bal || 0)) { showToast('Fondos insuficientes en ' + banco.banco); return; }
-    banco.bal = Math.round(((banco.bal || 0) - monto) * 100) / 100;
+    if (monto > (banco.bal||0)) { showToast('Fondos insuficientes en ' + banco.banco); return; }
+    banco.bal = Math.round(((banco.bal||0) - monto)*100)/100;
   }
-  deuda.bal = Math.max(0, Math.round(((deuda.bal || 0) - monto) * 100) / 100);
-  deuda.totalPaid = (deuda.totalPaid || 0) + monto;
+  deuda.bal = Math.max(0, Math.round(((deuda.bal||0) - monto)*100)/100);
+  deuda.totalPaid = (deuda.totalPaid||0) + monto;
   if (deuda.bal === 0) deuda.estado = 'Pagado';
-  // Sync linked credit card balance if this deuda came from a tarjeta
   if (deuda.esTCDeuda && deuda.tcId) {
     var tc = DATA.bancos.find(function(b){ return b.id === deuda.tcId; });
-    if (tc) {
-      tc.saldoUSD = deuda.bal;
-      tc.bal = deuda.bal;
-      tc.dispUSD = Math.min(tc.limUSD || 0, (tc.dispUSD || 0) + monto);
-      if (deuda.bal === 0) tc.saldoDOP = 0;
-    }
+    if (tc) { tc.saldoUSD = deuda.bal; tc.bal = deuda.bal; tc.dispUSD = Math.min(tc.limUSD||0,(tc.dispUSD||0)+monto); if (deuda.bal===0) tc.saldoDOP=0; }
   }
   if (!deuda.pagos) deuda.pagos = [];
-  deuda.pagos.push({ fecha: new Date().toISOString().slice(0,10), monto: monto, desde: banco ? banco.banco : 'Manual' });
-  // Log as gasto if paid from an account
+  deuda.pagos.push({ fecha: new Date().toISOString().slice(0,10), monto: monto, desde: banco?banco.banco:'Manual' });
   if (banco) {
     var d = dateInfo();
-    DATA.gastos.push({ id: Date.now(), monto: monto, mon: banco.mon, cat: '💳 Deuda/Préstamo', desc: 'Pago: ' + deuda.nom, fecha: new Date().toISOString().slice(0,10), month: d.month, year: d.year, source: 'banco_' + DATA.bancos.indexOf(banco) });
+    DATA.gastos.push({ id: Date.now(), monto: monto, mon: banco.mon, cat:'💳 Deuda/Préstamo', desc:'Pago: '+deuda.nom, fecha:new Date().toISOString().slice(0,10), month:d.month, year:d.year });
   }
   save(); closeSheet(); refreshHome(); refreshCuentas();
-  showToast('Pago registrado ✓ ' + fmt(monto, banco ? banco.mon : deuda.mon));
-}
-function buildPagarDeudaSheet(deudaId) {
-  var deuda = DATA.deudas.find(function(d){ return d.id === deudaId; });
-  if (!deuda) return '<div style="padding:20px"><p style="color:var(--t2)">Deuda no encontrada.</p></div>';
-  var cuentas = DATA.bancos.filter(function(b){ return !b.esTarjeta; });
-  var cuentaOpts = cuentas.length
-    ? cuentas.map(function(b){ return '<option value="' + b.id + '">' + b.banco + (b.ultimos?' ···'+b.ultimos:'') + ' (' + fmt(b.bal||0,b.mon) + ')</option>'; }).join('')
-    : '';
-  return '<div class="step-header"><button class="step-back" onclick="openSheet(\'add-deuda\')">←</button>' +
-    '<div class="step-title">Pagar: ' + deuda.nom + '</div><div class="step-sub">Saldo actual: ' + fmt(deuda.bal||0, deuda.mon) + '</div></div>' +
-    '<div style="padding:0 16px 16px">' +
-    (cuentas.length
-      ? '<div class="form-field"><label>Pagar desde cuenta</label><select id="pd-banco">' + cuentaOpts + '</select></div>'
-      : '<div style="background:rgba(201,169,110,0.08);border:1px solid rgba(201,169,110,0.2);border-radius:var(--r-sm);padding:10px 12px;font-size:12px;color:var(--gold);margin-bottom:12px;font-weight:600">⚠️ Agrega primero una cuenta de banco en "Cuentas" para descontar el pago automáticamente. Puedes registrar el pago igual sin cuenta.</div>') +
-    '<div class="form-field"><label>Monto a pagar</label><input id="pd-monto" type="number" placeholder="0.00" inputmode="decimal" value="' + (deuda.bal||0) + '"></div>' +
-    '<button class="btn-full" onclick="pagarDeuda(' + deudaId + ', v(\'pd-monto\'), ' + (cuentas.length ? "parseInt(v('pd-banco'))" : 'null') + ')">✅ Registrar pago</button>' +
-    '</div>';
+  showToast('Pago registrado ✓ ' + fmt(monto, banco?banco.mon:deuda.mon));
 }
 
 // ─── CATEGORÍAS PERSONALIZADAS ─────────────────────────────
@@ -3076,11 +3397,16 @@ function savePresupuesto() {
 
 function buildGastosFijosSheet() {
   if (!DATA.gastosFijos) DATA.gastosFijos = [];
+  var cuentas = (DATA.bancos||[]).filter(function(b){ return !b.esTarjeta; });
+  var cuentaOpts = '<option value="">— Sin descontar de cuenta —</option>' +
+    cuentas.map(function(b){ return '<option value="' + b.id + '">' + b.banco + (b.ultimos?' ···'+b.ultimos:'') + ' (' + fmt(b.bal||0,b.mon) + ')</option>'; }).join('');
   var listHTML = DATA.gastosFijos.length
     ? DATA.gastosFijos.map(function(f, i) {
+        var cuentaNom = f.bancoId ? (function(){ var b=(DATA.bancos||[]).find(function(x){return x.id===f.bancoId;}); return b?b.banco:''; })() : '';
         return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">' +
           '<div style="width:40px;height:40px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🔁</div>' +
-          '<div style="flex:1"><div style="font-size:14px;font-weight:600;color:var(--t1)">' + f.desc + '</div><div style="font-size:12px;color:var(--t3)">Día ' + f.dia + ' · ' + f.cat.split(' ').slice(1).join(' ') + '</div></div>' +
+          '<div style="flex:1"><div style="font-size:14px;font-weight:600;color:var(--t1)">' + f.desc + '</div>' +
+          '<div style="font-size:12px;color:var(--t3)">Día ' + f.dia + ' · ' + (f.cat||'').split(' ').slice(1).join(' ') + (cuentaNom?' · '+cuentaNom:'') + '</div></div>' +
           '<div style="display:flex;align-items:center;gap:6px">' +
             '<span style="font-size:14px;font-weight:700;color:var(--red)">−' + fmt(f.monto,f.mon) + '</span>' +
             '<button onclick="applyGastoFijo(' + i + ')" style="background:var(--gold-dim);border:1px solid var(--gold);color:var(--gold);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">▶ Aplicar</button>' +
@@ -3095,7 +3421,14 @@ function buildGastosFijosSheet() {
     '<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">' +
       '<div style="font-size:12px;font-weight:700;color:var(--t3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px">+ Agregar gasto fijo</div>' +
       '<div class="form-field"><label>Descripción</label><input id="gfj-desc" type="text" placeholder="Ej: Netflix, Gimnasio..."></div>' +
-      '<div class="form-row"><div class="form-field"><label>Monto</label><input id="gfj-monto" type="number" placeholder="0.00" inputmode="decimal"></div><div class="form-field"><label>Día del mes</label><input id="gfj-dia" type="number" placeholder="1-31" min="1" max="31"></div></div>' +
+      '<div class="form-row">' +
+        '<div class="form-field"><label>Monto</label><input id="gfj-monto" type="number" placeholder="0.00" inputmode="decimal"></div>' +
+        '<div class="form-field"><label>Moneda</label><select id="gfj-mon"><option>USD</option><option>DOP</option></select></div>' +
+      '</div>' +
+      '<div class="form-row">' +
+        '<div class="form-field"><label>Día del mes</label><input id="gfj-dia" type="number" placeholder="1-31" min="1" max="31"></div>' +
+        '<div class="form-field"><label>Descontar de cuenta</label><select id="gfj-banco">' + cuentaOpts + '</select></div>' +
+      '</div>' +
       '<div class="form-field"><label>Categoría</label><select id="gfj-cat">' + getAllCats().map(function(c){ return '<option>' + c[0] + '</option>'; }).join('') + '</select></div>' +
       '<button class="btn-full" onclick="saveGastoFijo()">Guardar gasto fijo</button>' +
     '</div></div>';
@@ -3104,20 +3437,29 @@ function saveGastoFijo() {
   var desc = v('gfj-desc'), monto = parseFloat(v('gfj-monto'));
   if (!desc || !monto) { showToast('Completa descripción y monto'); return; }
   if (!DATA.gastosFijos) DATA.gastosFijos = [];
-  DATA.gastosFijos.push({ desc: desc, monto: monto, mon: 'USD', dia: parseInt(v('gfj-dia')) || 1, cat: v('gfj-cat') });
-  save();
-  showToast('Gasto fijo guardado ✓');
-  openSheet('gastos-fijos');
+  var bancoId = v('gfj-banco') ? parseInt(v('gfj-banco')) || null : null;
+  DATA.gastosFijos.push({ desc: desc, monto: monto, mon: v('gfj-mon')||'USD', dia: parseInt(v('gfj-dia'))||1, cat: v('gfj-cat'), bancoId: bancoId });
+  save(); showToast('Gasto fijo guardado ✓'); openSheet('gastos-fijos');
 }
 function applyGastoFijo(i) {
   if (!DATA.gastosFijos || !DATA.gastosFijos[i]) return;
   var f = DATA.gastosFijos[i];
   var today = new Date().toISOString().slice(0,10);
   var d = dateInfo(today);
-  DATA.gastos.push({ id: Date.now(), monto: f.monto, mon: f.mon, cat: f.cat, desc: f.desc, fecha: today, month: d.month, year: d.year, source: '' });
-  save(); refreshHome();
-  showToast('✓ Gasto aplicado: ' + f.desc);
-  openSheet('gastos-fijos');
+  DATA.gastos.push({ id: Date.now(), monto: f.monto, mon: f.mon||'USD', cat: f.cat, desc: f.desc, fecha: today, month: d.month, year: d.year, source: '' });
+  // Deduct from bank if configured
+  if (f.bancoId) {
+    var banco = (DATA.bancos||[]).find(function(b){ return b.id === f.bancoId; });
+    if (banco) {
+      banco.bal = Math.round(((banco.bal||0) - f.monto) * 100) / 100;
+      showToast('✓ ' + f.desc + ' aplicado y descontado de ' + banco.banco);
+    } else {
+      showToast('✓ Gasto aplicado: ' + f.desc);
+    }
+  } else {
+    showToast('✓ Gasto aplicado: ' + f.desc);
+  }
+  save(); refreshHome(); refreshCuentas(); openSheet('gastos-fijos');
 }
 function delGastoFijo(i) {
   if (!DATA.gastosFijos) return;
@@ -3475,8 +3817,14 @@ function sendIAMessage() {
 
 function _localAIAnswer(msg) {
   var cur = DATA.curMonth, curY = DATA.curYear;
-  var curGas  = (DATA.gastos||[]).filter(function(x){ return x.month===cur && x.year===curY; });
-  var curIngs = (DATA.ingresos||[]).filter(function(x){ return x.month===cur && x.year===curY; });
+  // Use all gastos/ingresos — not just current month — since month may vary by timezone
+  var allGas  = DATA.gastos || [];
+  var allIngs = DATA.ingresos || [];
+  var curGas  = allGas.filter(function(x){ return x.month===cur && x.year===curY; });
+  var curIngs = allIngs.filter(function(x){ return x.month===cur && x.year===curY; });
+  // If no data for current month, use all data
+  if (curGas.length === 0 && allGas.length > 0) curGas = allGas;
+  if (curIngs.length === 0 && allIngs.length > 0) curIngs = allIngs;
   var tI = curIngs.reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
   var tG = curGas.reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
   var tB = (DATA.bancos||[]).reduce(function(a,b){ return !b.esTarjeta?a+toUSD(b.bal||0,b.mon):a; }, 0);
