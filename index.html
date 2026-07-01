@@ -863,27 +863,47 @@ canvas { max-width: 100%; display: block; }
       <button class="land-cta-primary" onclick="startApp()">Comenzar gratis →</button>
       <button class="land-cta-sec" onclick="startApp()">Ya tengo cuenta</button>
     </div>
-    <!-- Mock phone preview -->
-    <div class="land-mockup">
-      <div class="mock-bar">
-        <span class="mock-name">GestorRD</span>
-        <span class="mock-score">⭐ 87 pts</span>
+    <!-- Real dashboard preview (SVG) -->
+    <div class="land-mockup" style="background:var(--surface);border-radius:24px;overflow:hidden;padding:0;border:1px solid var(--border2)">
+      <!-- Header -->
+      <div style="padding:14px 16px 10px;background:var(--bg)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <span style="font-size:14px;font-weight:900;color:var(--t1)">Gestor<span style="color:var(--gold)">RD</span></span>
+          <span style="background:var(--gold-dim);border:1px solid var(--gold);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;color:var(--gold)">⭐ 87 pts</span>
+        </div>
+        <div style="font-size:11px;color:var(--t3);font-weight:600;margin-bottom:2px">DISPONIBLE ESTE MES</div>
+        <div style="font-size:28px;font-weight:900;color:var(--t1);letter-spacing:-0.03em">$2,843<span style="font-size:16px">.52</span></div>
+        <div style="font-size:11px;color:var(--green);font-weight:600;margin-top:2px">▲ +8.4% respecto al mes anterior</div>
       </div>
-      <div class="mock-amount">$2,843</div>
-      <div class="mock-label">Disponible este mes</div>
-      <div class="mock-ring-wrap">
-        <div class="mock-ring">
-          <svg viewBox="0 0 36 36">
-            <circle cx="18" cy="18" r="15.9" fill="none" stroke="#1a1a1a" stroke-width="3"/>
-            <circle cx="18" cy="18" r="15.9" fill="none" stroke="#c9a96e" stroke-width="3" stroke-dasharray="65 35" stroke-linecap="round"/>
-          </svg>
-          <div class="mock-ring-pct">65%</div>
+      <!-- Donut row -->
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border-top:1px solid var(--border)">
+        <svg width="52" height="52" viewBox="0 0 36 36">
+          <circle cx="18" cy="18" r="14" fill="none" stroke="var(--border)" stroke-width="4"/>
+          <circle cx="18" cy="18" r="14" fill="none" stroke="var(--gold)" stroke-width="4" stroke-dasharray="42 46" stroke-dashoffset="-11" stroke-linecap="round"/>
+          <circle cx="18" cy="18" r="14" fill="none" stroke="var(--red)" stroke-width="4" stroke-dasharray="16 72" stroke-dashoffset="-53" stroke-linecap="round"/>
+          <circle cx="18" cy="18" r="14" fill="none" stroke="var(--green)" stroke-width="4" stroke-dasharray="6 82" stroke-dashoffset="-69" stroke-linecap="round"/>
+        </svg>
+        <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+          <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--t2)">● Disponible</span><span style="font-weight:700;color:var(--t1)">$1,843</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--t2)">● Gastos</span><span style="font-weight:700;color:var(--red)">$750</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--t2)">● Ahorros</span><span style="font-weight:700;color:var(--green)">$250</span></div>
         </div>
       </div>
-      <div class="mock-pills">
-        <span class="mock-pill g">✔ Ahorro ↑</span>
-        <span class="mock-pill r">⚠ Comida ↑18%</span>
-        <span class="mock-pill b">💡 Score 87</span>
+      <!-- AI insights -->
+      <div style="margin:10px 12px;background:var(--bg);border-radius:12px;padding:10px 12px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <span style="background:var(--gold-dim);color:var(--gold);border-radius:4px;padding:2px 6px;font-size:9px;font-weight:800">IA</span>
+          <span style="font-size:11px;font-weight:700;color:var(--t1)">Análisis de tu dinero</span>
+        </div>
+        <div style="font-size:11px;color:var(--t2);line-height:1.5">· Gastaste menos en gasolina este mes<br>· Tu ahorro aumentó 12%<br>· Puedes gastar hasta <strong style="color:var(--gold)">$410</strong> sin salirte del presupuesto</div>
+      </div>
+      <!-- Score bar -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border)">
+        <div style="font-size:10px;font-weight:700;color:var(--t3)">SCORE FINANCIERO</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="height:5px;width:90px;background:var(--border);border-radius:3px;overflow:hidden"><div style="width:87%;height:100%;background:var(--green);border-radius:3px"></div></div>
+          <span style="font-size:13px;font-weight:900;color:var(--green)">87</span>
+        </div>
       </div>
     </div>
   </div>
@@ -938,24 +958,15 @@ canvas { max-width: 100%; display: block; }
     </div>
   </div>
 
-  <!-- Testimonials -->
+  <!-- Testimonials — placeholder until real users -->
   <div class="land-testimonials">
     <div class="land-section-title">Lo que dicen.</div>
-    <div class="land-section-sub">Usuarios reales de RD y USA.</div>
-    <div class="testi-card">
-      <div class="testi-stars">★★★★★</div>
-      <div class="testi-text">"Nunca había podido controlar mis gastos en USA y en RD al mismo tiempo. GestorRD lo hace fácil."</div>
-      <div class="testi-name">María L. — New York</div>
-    </div>
-    <div class="testi-card">
-      <div class="testi-stars">★★★★★</div>
-      <div class="testi-text">"El score financiero me motivó a pagar mis deudas más rápido. En 3 meses subí de 62 a 84 puntos."</div>
-      <div class="testi-name">Carlos M. — Santo Domingo</div>
-    </div>
-    <div class="testi-card">
-      <div class="testi-stars">★★★★★</div>
-      <div class="testi-text">"La IA me dijo que gastaba demasiado en comida rápida. Tenía razón. Ahorré $180 ese mes."</div>
-      <div class="testi-name">Ana R. — Miami</div>
+    <div class="land-section-sub">Próximamente opiniones de nuestros usuarios.</div>
+    <div style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-md);padding:28px 24px;text-align:center;max-width:460px;margin:0 auto">
+      <div style="font-size:36px;margin-bottom:12px">💬</div>
+      <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:8px">¿Ya usas GestorRD?</div>
+      <div style="font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:16px">Tu opinión nos importa. Si la app te ha ayudado con tus finanzas, nos encantaría escucharte.</div>
+      <a href="mailto:hola@gestorrd.com" style="display:inline-block;background:var(--gold-dim);border:1px solid var(--gold);color:var(--gold);border-radius:20px;padding:9px 20px;font-size:13px;font-weight:700;text-decoration:none">Compartir mi experiencia →</a>
     </div>
   </div>
 
@@ -964,6 +975,10 @@ canvas { max-width: 100%; display: block; }
     <div class="land-section-title" style="text-align:center;margin-bottom:6px">Preguntas frecuentes</div>
     <div class="land-section-sub" style="text-align:center;margin-bottom:28px">Todo lo que necesitas saber.</div>
     <div style="max-width:500px;margin:0 auto;display:flex;flex-direction:column;gap:12px">
+      <details style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:16px 18px">
+        <summary style="font-size:14px;font-weight:700;color:var(--t1);cursor:pointer;list-style:none;display:flex;justify-content:space-between">¿Qué diferencia a GestorRD de otras apps? <span>+</span></summary>
+        <div style="font-size:13px;color:var(--t2);margin-top:10px;line-height:1.6">La mayoría de apps financieras son para un solo país y una sola moneda. GestorRD es la única pensada para quien vive entre República Dominicana y USA: maneja DOP y USD al mismo tiempo, con conversión automática, bancos de ambos países, y una IA que entiende el contexto económico dominicano.</div>
+      </details>
       <details style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:16px 18px">
         <summary style="font-size:14px;font-weight:700;color:var(--t1);cursor:pointer;list-style:none;display:flex;justify-content:space-between">¿Es gratis? <span>+</span></summary>
         <div style="font-size:13px;color:var(--t2);margin-top:10px;line-height:1.6">Sí. GestorRD es completamente gratis. Sin suscripción, sin tarjeta de crédito.</div>
@@ -977,12 +992,8 @@ canvas { max-width: 100%; display: block; }
         <div style="font-size:13px;color:var(--t2);margin-top:10px;line-height:1.6">Sí. Todo funciona offline. Solo necesitas internet para el respaldo en la nube y la tasa de cambio automática.</div>
       </details>
       <details style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:16px 18px">
-        <summary style="font-size:14px;font-weight:700;color:var(--t1);cursor:pointer;list-style:none;display:flex;justify-content:space-between">¿Puedo usarla en USA y en RD? <span>+</span></summary>
-        <div style="font-size:13px;color:var(--t2);margin-top:10px;line-height:1.6">Sí. Maneja USD y DOP al mismo tiempo con conversión automática usando la tasa del Banco Central.</div>
-      </details>
-      <details style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:16px 18px">
         <summary style="font-size:14px;font-weight:700;color:var(--t1);cursor:pointer;list-style:none;display:flex;justify-content:space-between">¿Cómo funciona la IA? <span>+</span></summary>
-        <div style="font-size:13px;color:var(--t2);margin-top:10px;line-height:1.6">Analiza tus ingresos, gastos, deudas y metas del mes para darte consejos personalizados. Puedes hacerle preguntas en lenguaje natural como "¿Puedo comprar un carro?".</div>
+        <div style="font-size:13px;color:var(--t2);margin-top:10px;line-height:1.6">Analiza tus ingresos, gastos, deudas y metas para darte consejos personalizados. Puedes preguntarle cosas como "¿En qué gasté más?" o "¿Puedo comprar un carro?" y responde con tus datos reales.</div>
       </details>
     </div>
   </div>
@@ -1153,16 +1164,22 @@ canvas { max-width: 100%; display: block; }
         <button class="quick-access-btn" onclick="sN('reportes')"><span class="qa-icon">📈</span>Reportes</button>
       </div>
 
-      <!-- AI insights -->
+      <!-- AI insights — Centro de Inteligencia -->
       <div class="ai-card" id="ai-card">
         <div class="ai-header">
-          <div class="ai-badge">IA LOCAL</div>
-          <div class="ai-title">Análisis de tu dinero</div>
+          <div class="ai-badge">IA</div>
+          <div class="ai-title">Centro de Inteligencia</div>
         </div>
-        <div id="ai-insights"><div class="ai-insight"><span class="ai-dot">·</span><span>Registra transacciones para ver análisis.</span></div></div>
+        <div id="ai-insights"><div class="ai-insight"><span class="ai-dot">·</span><span>Registra transacciones para ver tu análisis.</span></div></div>
         <div class="ai-can-spend" id="ai-can-spend" style="display:none">
           Puedes gastar hasta hoy sin salirte del presupuesto:
           <strong id="ai-can-amount">$0</strong>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">
+          <button onclick="openIAWithQuestion('¿Dónde gasté más este mes?')" style="background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:6px 12px;font-size:11px;font-weight:600;color:var(--t1);cursor:pointer">💸 ¿Dónde gasté más?</button>
+          <button onclick="openIAWithQuestion('¿Qué puedo mejorar en mis finanzas?')" style="background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:6px 12px;font-size:11px;font-weight:600;color:var(--t1);cursor:pointer">📈 ¿Qué puedo mejorar?</button>
+          <button onclick="openIAWithQuestion('¿Cuánto puedo ahorrar este mes?')" style="background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:6px 12px;font-size:11px;font-weight:600;color:var(--t1);cursor:pointer">🐷 ¿Cuánto puedo ahorrar?</button>
+          <button onclick="openIAWithQuestion('¿Cómo subo mi score financiero?')" style="background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:6px 12px;font-size:11px;font-weight:600;color:var(--t1);cursor:pointer">⭐ ¿Cómo subo mi score?</button>
         </div>
       </div>
 
@@ -1173,18 +1190,12 @@ canvas { max-width: 100%; display: block; }
       </div>
 
       <!-- Score -->
-      <div class="score-card" id="score-section">
-        <div class="score-header">
-          <div>
-            <div class="score-number" id="score-num">—</div>
-            <div class="score-label" id="score-label">Sin datos</div>
-          </div>
-          <div style="text-align:right">
-            <div style="font-size:11px;color:var(--t3);font-weight:600;margin-bottom:6px">SCORE FINANCIERO</div>
-            <div id="score-badge"></div>
-          </div>
-        </div>
-        <div class="score-factors" id="score-factors"></div>
+      <div class="score-card" id="score-section" style="text-align:center;padding:28px 20px 20px">
+        <div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px">SCORE FINANCIERO</div>
+        <div class="score-number" id="score-num" style="font-size:80px;line-height:1">—</div>
+        <div class="score-label" id="score-label" style="font-size:16px;margin:8px 0 4px">Sin datos</div>
+        <div id="score-badge" style="margin-bottom:20px"></div>
+        <div class="score-factors" id="score-factors" style="text-align:left"></div>
       </div>
 
       <!-- Logros -->
@@ -1387,6 +1398,10 @@ canvas { max-width: 100%; display: block; }
 
       <div class="settings-section">App</div>
       <div class="settings-card">
+        <div class="settings-item" onclick="showPremiumSheet()" style="background:var(--gold-dim);border-radius:var(--r-sm);margin-bottom:1px">
+          <span class="settings-icon">💎</span><span class="settings-label" style="color:var(--gold);font-weight:800">GestorRD Premium</span>
+          <span style="font-size:11px;font-weight:700;color:var(--gold);background:rgba(201,169,110,0.2);border-radius:20px;padding:2px 8px">Próximamente</span>
+        </div>
         <div class="settings-item" onclick="openSheet('novedades')">
           <span class="settings-icon">🆕</span><span class="settings-label">Novedades v3.1</span>
           <span class="settings-arrow">›</span>
@@ -1457,7 +1472,40 @@ var DATA = {
   tasa: 58.85,
   lang: 'es', mode: 'both',
   userName: '',
+  isPremium: false,      // Premium flag — ready for activation
+  premiumSince: null,    // ISO date of activation
 };
+
+// ─── PREMIUM ARCHITECTURE (scaffold — not yet active) ──────
+var PREMIUM_FEATURES = {
+  csvImport: true, aiChat: true, cloudBackup: true,
+  exportPDF: true, advancedReports: true, noAds: true,
+};
+function isPremium() { return DATA.isPremium === true; }
+function activatePremium() {
+  DATA.isPremium = true;
+  DATA.premiumSince = new Date().toISOString();
+  save(); showToast('🎉 ¡Bienvenido a GestorRD Premium!'); updProfile();
+}
+function showPremiumSheet() {
+  openSheetWith(
+    '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button>' +
+    '<div class="step-title">GestorRD Premium</div></div>' +
+    '<div style="padding:0 16px 24px">' +
+    '<div style="text-align:center;padding:24px 0 20px">' +
+      '<div style="font-size:48px;margin-bottom:8px">💎</div>' +
+      '<div style="font-size:22px;font-weight:900;color:var(--t1);margin-bottom:6px">Próximamente</div>' +
+      '<div style="font-size:14px;color:var(--t2);line-height:1.6;margin-bottom:0">Estamos preparando la versión Premium.<br>Sé el primero en enterarte.</div>' +
+    '</div>' +
+    '<div style="display:flex;flex-direction:column;gap:10px;margin:0 0 24px">' +
+    ['📥 Importación ilimitada de estados de cuenta','🧠 Asesor IA sin límites','☁️ Respaldo automático en la nube','📄 Exportar en PDF y Excel','📊 Reportes de 12 meses','🌍 Múltiples monedas','🚫 Sin publicidad futura'].map(function(f){
+      return '<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--t1)"><span style="color:var(--gold)">✓</span>' + f + '</div>';
+    }).join('') +
+    '</div>' +
+    '<a href="mailto:hola@gestorrd.com?subject=Quiero%20Premium" style="display:block;text-align:center;background:var(--gold-dim);border:1.5px solid var(--gold);color:var(--gold);border-radius:14px;padding:14px;font-size:15px;font-weight:700;text-decoration:none">Notificarme cuando esté disponible →</a>' +
+    '</div>'
+  );
+}
 
 function save() {
   try { localStorage.setItem('grd3_data', JSON.stringify(DATA)); } catch(e) {}
@@ -1901,10 +1949,15 @@ function refreshHome() {
   if (nwEl) { nwEl.textContent = fmtSigned(nw.patri); nwEl.style.color = nw.patri >= 0 ? 'var(--t1)' : 'var(--red)'; }
   var nwChgEl = document.getElementById('home-networth-chg');
   if (nwChgEl) {
-    if (typeof nw.prevPatri === 'number') {
+    if (typeof nw.prevPatri === 'number' && nw.prevPatri !== 0) {
       var diff = nw.patri - nw.prevPatri;
-      nwChgEl.textContent = (diff >= 0 ? '▲ +' : '▼ -') + fmt(Math.abs(diff)) + ' vs mes ant.';
+      var pct = Math.round(Math.abs(diff) / Math.abs(nw.prevPatri) * 100);
+      nwChgEl.textContent = (diff >= 0 ? '↑ +' : '↓ −') + pct + '% respecto al mes pasado';
       nwChgEl.style.color = diff >= 0 ? 'var(--green)' : 'var(--red)';
+    } else if (typeof nw.prevPatri === 'number') {
+      var diff2 = nw.patri - nw.prevPatri;
+      nwChgEl.textContent = (diff2 >= 0 ? '↑ +' : '↓ ') + fmt(Math.abs(diff2)) + ' vs mes ant.';
+      nwChgEl.style.color = diff2 >= 0 ? 'var(--green)' : 'var(--red)';
     } else {
       nwChgEl.textContent = '— sin historial previo';
       nwChgEl.style.color = 'var(--t3)';
@@ -2345,17 +2398,13 @@ function openAuthFromProfile() {
 function openAddMenu() {
   var html = '<div class="add-menu-title">Agregar</div>' +
     '<div class="add-menu-grid">' +
-    makeAddBtn('💸','Gasto','Registrar un gasto',"openSheet('add-gasto')") +
     makeAddBtn('📷','Escanear','Leer factura con IA',"openSheet('scan-recibo')") +
-    makeAddBtn('💵','Ingreso','Registrar un ingreso',"openSheet('add-ingreso')") +
     makeAddBtn('🔁','Gasto fijo','Recurrente mensual',"openSheet('gastos-fijos')") +
     makeAddBtn('💳','Deuda','Tarjeta o préstamo',"openSheet('add-deuda')") +
     makeAddBtn('🎯','Meta','Objetivo de ahorro',"openSheet('add-meta')") +
-    makeAddBtn('📋','Historial','Ver todos los movimientos',"openSheet('historial')") +
-    makeAddBtn('🧠','Asesor IA','Pregunta sobre tus finanzas',"openSheet('ia-chat')") +
-    makeAddBtn('📥','Importar','Subir CSV de tu banco',"openSheet('importar')") +
     makeAddBtn('🏦','Cuenta','Banco o tarjeta',"openSheet('add-banco')") +
     makeAddBtn('📊','Presupuesto','Límite por categoría',"openSheet('add-presupuesto')") +
+    makeAddBtn('📥','Importar','Subir CSV de tu banco',"openSheet('importar')") +
     '</div><div style="height:16px"></div>';
   openSheetWith(html);
 }
@@ -3173,27 +3222,26 @@ function updLogros() {
   var numMetas = (DATA.metas||[]).length;
   var numDeudas = (DATA.deudas||[]).filter(function(d){ return d.estado!=='Pagado'; }).length;
   var numPresup = (DATA.presupuesto||[]).length;
-  var metasComp = (DATA.metas||[]).filter(function(m){ return (m.actual||0) >= (m.total||1); }).length;
+  var metasComp = (DATA.metas||[]).filter(function(m){ return (m.actual||0) >= (m.total||1) && m.total > 0; }).length;
   var sc = SCORE.run();
   var rachaGastos = 0;
-  // Check consecutive months with gastos registered
   for (var mm = cur; mm >= 0; mm--) {
     if (gastos.some(function(g){ return g.month===mm && g.year===curY; })) rachaGastos++; else break;
   }
 
   var LOGROS = [
-    { id:'primero_gasto',  icon:'💸', title:'Primer gasto',       desc:'Registraste tu primer gasto',              earned: totalGastos >= 1 },
-    { id:'primer_ingreso', icon:'💵', title:'Primer ingreso',      desc:'Registraste tu primer ingreso',            earned: totalIngs >= 1 },
-    { id:'primera_cuenta', icon:'🏦', title:'Conectado',           desc:'Agregaste una cuenta bancaria',            earned: numBancos >= 1 },
-    { id:'primera_meta',   icon:'🎯', title:'Soñador',             desc:'Creaste tu primera meta de ahorro',        earned: numMetas >= 1 },
-    { id:'meta_cumplida',  icon:'🏆', title:'Meta cumplida',       desc:'Alcanzaste una meta de ahorro',            earned: metasComp >= 1 },
-    { id:'presupuesto',    icon:'📊', title:'Organizado',          desc:'Definiste un presupuesto mensual',         earned: numPresup >= 1 },
-    { id:'sin_deudas',     icon:'🕊️', title:'Libre de deudas',    desc:'No tienes deudas activas',                 earned: totalGastos > 0 && numDeudas === 0 },
-    { id:'score_70',       icon:'⭐', title:'Buen score',          desc:'Alcanzaste un score financiero de 70+',    earned: sc.total >= 70 },
-    { id:'ahorro_pos',     icon:'🐷', title:'Ahorrador',           desc:'Ingresaste más de lo que gastaste este mes', earned: tI > 0 && tG < tI },
-    { id:'racha_3',        icon:'🔥', title:'En racha',            desc:'Registraste gastos 3 meses seguidos',      earned: rachaGastos >= 3 },
-    { id:'diez_gastos',    icon:'📋', title:'Disciplinado',        desc:'Registraste más de 10 gastos',             earned: totalGastos >= 10 },
-    { id:'score_90',       icon:'💎', title:'Élite financiero',    desc:'Alcanzaste un score de 90 o más',          earned: sc.total >= 90 },
+    { icon:'💸', title:'Primer gasto',     desc:'Registraste tu primer movimiento',  earned: totalGastos >= 1,   color:'#e74c3c' },
+    { icon:'💵', title:'Primer ingreso',   desc:'Ingreso registrado',                earned: totalIngs >= 1,     color:'#27ae60' },
+    { icon:'🏦', title:'Conectado',        desc:'Cuenta bancaria agregada',          earned: numBancos >= 1,     color:'#2980b9' },
+    { icon:'🎯', title:'Soñador',          desc:'Primera meta de ahorro creada',     earned: numMetas >= 1,      color:'#8e44ad' },
+    { icon:'🏆', title:'Meta cumplida',    desc:'Alcanzaste una meta de ahorro',     earned: metasComp >= 1,     color:'#f39c12' },
+    { icon:'📊', title:'Organizado',       desc:'Presupuesto mensual definido',      earned: numPresup >= 1,     color:'#16a085' },
+    { icon:'🕊️', title:'Sin deudas',      desc:'Sin deudas activas registradas',    earned: totalGastos > 0 && numDeudas === 0, color:'#1abc9c' },
+    { icon:'⭐', title:'Score saludable',  desc:'Score financiero de 70 o más',      earned: sc.total >= 70,     color:'#f1c40f' },
+    { icon:'🔥', title:'En racha',         desc:'3 meses consecutivos registrando',  earned: rachaGastos >= 3,   color:'#e67e22' },
+    { icon:'📋', title:'Disciplinado',     desc:'Más de 10 gastos registrados',      earned: totalGastos >= 10,  color:'#3498db' },
+    { icon:'💎', title:'Élite financiero', desc:'Score de 90 puntos o más',          earned: sc.total >= 90,     color:'#9b59b6' },
+    { icon:'🐷', title:'Ahorrador',        desc:'Gastaste menos de lo que ganaste',  earned: tI > 0 && tG < tI, color:'#e91e63' },
   ];
 
   var earned = LOGROS.filter(function(l){ return l.earned; });
@@ -3202,21 +3250,28 @@ function updLogros() {
   if (earned.length === 0) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
-  var html = earned.map(function(l) {
-    return '<div class="logro-item">' +
-      '<div class="logro-badge earned">' + l.icon + '</div>' +
-      '<div><div class="logro-title">' + l.title + '</div><div class="logro-desc">' + l.desc + '</div>' +
-      '<span class="logro-earned-tag">✓ Conseguido</span></div></div>';
+  // Earned — Apple Fitness style big cards
+  var html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">';
+  html += earned.map(function(l) {
+    return '<div style="background:var(--bg3);border-radius:16px;padding:14px 8px;text-align:center;border:1px solid var(--border)">' +
+      '<div style="width:48px;height:48px;border-radius:50%;background:' + l.color + '22;border:2px solid ' + l.color + '55;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 8px">' + l.icon + '</div>' +
+      '<div style="font-size:11px;font-weight:700;color:var(--t1);line-height:1.3;margin-bottom:3px">' + l.title + '</div>' +
+      '<div style="font-size:10px;color:var(--t3);line-height:1.3">' + l.desc + '</div>' +
+    '</div>';
   }).join('');
+  html += '</div>';
 
-  // Show up to 3 locked logros as "próximos"
+  // Next up — smaller locked previews
   if (locked.length > 0) {
-    html += '<div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.5px;text-transform:uppercase;margin:12px 0 6px">Próximos logros</div>';
-    html += locked.slice(0, 3).map(function(l) {
-      return '<div class="logro-item">' +
-        '<div class="logro-badge locked">' + l.icon + '</div>' +
-        '<div><div class="logro-title" style="color:var(--t3)">' + l.title + '</div><div class="logro-desc">' + l.desc + '</div></div></div>';
+    html += '<div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">Próximos</div>';
+    html += '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none">';
+    html += locked.slice(0, 4).map(function(l) {
+      return '<div style="flex-shrink:0;background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:10px 12px;text-align:center;min-width:90px;opacity:0.5;filter:grayscale(1)">' +
+        '<div style="font-size:22px;margin-bottom:4px">' + l.icon + '</div>' +
+        '<div style="font-size:10px;font-weight:700;color:var(--t3)">' + l.title + '</div>' +
+      '</div>';
     }).join('');
+    html += '</div>';
   }
 
   list.innerHTML = html;
@@ -3322,6 +3377,14 @@ function sendIAQuestion(q) {
   var inp = document.getElementById('ia-input');
   if (inp) inp.value = q;
   sendIAMessage();
+}
+function openIAWithQuestion(q) {
+  // Open IA sheet then auto-send the question after render
+  openSheet('ia-chat');
+  setTimeout(function() {
+    var inp = document.getElementById('ia-input');
+    if (inp) { inp.value = q; sendIAMessage(); }
+  }, 100);
 }
 
 function sendIAMessage() {
