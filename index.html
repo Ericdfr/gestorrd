@@ -561,20 +561,6 @@ input, select, textarea, button { font-family: inherit; }
 .quick-access-btn:active { transform: scale(0.95); border-color: var(--gold); }
 .qa-icon { font-size: 20px; }
 
-/* Achievements strip */
-.achv-strip {
-  display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch;
-  margin: 0 0 12px; padding: 0 16px;
-}
-.achv-strip::-webkit-scrollbar { display: none; }
-.achv-chip {
-  flex-shrink: 0; display: flex; align-items: center; gap: 6px;
-  background: var(--gold-dim); border: 1px solid var(--gold-glow);
-  border-radius: 20px; padding: 7px 12px;
-  font-size: 11px; font-weight: 700; color: var(--gold); white-space: nowrap;
-}
-.achv-chip.locked { background: var(--bg3); border-color: var(--border); color: var(--t3); opacity: 0.6; }
-
 /* Donut chart */
 .donut-row { display: flex; align-items: center; gap: 16px; }
 .donut-wrap { position: relative; width: 88px; height: 88px; flex-shrink: 0; }
@@ -1166,9 +1152,6 @@ canvas { max-width: 100%; display: block; }
         <button class="quick-access-btn" onclick="openSheet('ia-chat')"><span class="qa-icon">🧠</span>IA</button>
         <button class="quick-access-btn" onclick="sN('reportes')"><span class="qa-icon">📈</span>Reportes</button>
       </div>
-
-      <!-- Achievements strip -->
-      <div class="achv-strip" id="achv-strip"></div>
 
       <!-- AI insights -->
       <div class="ai-card" id="ai-card">
@@ -1938,17 +1921,6 @@ function refreshHome() {
     else if (pred.overBudgetRisk) { predSubEl.textContent = '⚠️ riesgo de exceder presupuesto'; predSubEl.style.color = 'var(--red)'; }
     else { predSubEl.textContent = pred.daysLeft + ' días restantes'; predSubEl.style.color = 'var(--t3)'; }
   }
-
-  // Achievements
-  var achv = ACHV.run();
-  var achvHTML = achv.all.map(function(a) {
-    var unlocked = achv.unlocked.indexOf(a.id) !== -1;
-    return '<div class="achv-chip' + (unlocked ? '' : ' locked') + '"><span>' + a.icon + '</span><span>' + a.name + '</span></div>';
-  }).join('');
-  elHTML('achv-strip', achvHTML);
-  achv.newlyUnlocked.forEach(function(a, i) {
-    setTimeout(function(){ showToast('🏆 Logro desbloqueado: ' + a.name, 3500); }, 600 + i * 1200);
-  });
 
   // AI
   var ai = AI.run();
@@ -3202,7 +3174,7 @@ function updLogros() {
   var numDeudas = (DATA.deudas||[]).filter(function(d){ return d.estado!=='Pagado'; }).length;
   var numPresup = (DATA.presupuesto||[]).length;
   var metasComp = (DATA.metas||[]).filter(function(m){ return (m.actual||0) >= (m.total||1); }).length;
-  var sc = calcScore();
+  var sc = SCORE.run();
   var rachaGastos = 0;
   // Check consecutive months with gastos registered
   for (var mm = cur; mm >= 0; mm--) {
