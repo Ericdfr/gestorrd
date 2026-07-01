@@ -399,7 +399,7 @@ input, select, textarea, button { font-family: inherit; }
   display: flex; align-items: flex-start; justify-content: space-around;
   padding-top: 10px;
   padding-bottom: max(14px, var(--safe-bot));
-  z-index: 100;
+  z-index: 250;
 }
 .nb {
   flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
@@ -416,6 +416,7 @@ input, select, textarea, button { font-family: inherit; }
   font-size: 28px; color: #fff; margin-top: -18px;
   box-shadow: 0 4px 20px rgba(201,169,110,0.5);
   transition: transform 0.15s, box-shadow 0.15s;
+  position: relative; z-index: 320;
 }
 .nb-add:active { transform: scale(0.93); box-shadow: 0 2px 10px rgba(201,169,110,0.3); }
 
@@ -749,13 +750,13 @@ input, select, textarea, button { font-family: inherit; }
    ADD TRANSACTION BOTTOM SHEET
    ════════════════════════════════════ */
 .sheet-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200;
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 280;
   display: none; backdrop-filter: blur(4px);
 }
 .sheet-overlay.open { display: block; }
 .bottom-sheet {
   position: fixed; left: 50%; bottom: 0; transform: translateX(-50%);
-  width: 100%; max-width: 430px; z-index: 201;
+  width: 100%; max-width: 430px; z-index: 300;
   background: var(--bg2); border-radius: var(--r-xl) var(--r-xl) 0 0;
   border: 1px solid var(--border); border-bottom: none;
   padding-bottom: max(28px, var(--safe-bot));
@@ -2339,11 +2340,11 @@ function refreshReportes() {
     if (!ing2 && !gas2) continue;
     var net = ing2 - gas2;
     mdHTML += '<div class="list-item">' +
-      '<div class="list-item-left"><div style="font-size:14px;font-weight:600;color:var(--t1)">' + MONTHS_SHORT[mi] + ' ' + curY + '</div></div>' +
-      '<div style="text-align:right">' +
-        '<div style="font-size:13px;color:var(--green);font-weight:600">+' + fmt(ing2) + '</div>' +
-        '<div style="font-size:13px;color:var(--red)">-' + fmt(gas2) + '</div>' +
-        '<div style="font-size:12px;font-weight:700;color:' + (net>=0?'var(--gold)':'var(--red)') + '">' + (net>=0?'+':'') + fmt(net) + '</div>' +
+      '<div class="list-item-left"><div style="font-size:14px;font-weight:700;color:var(--t1)">' + MONTHS_SHORT[mi] + ' ' + curY + '</div></div>' +
+      '<div style="text-align:right;display:flex;flex-direction:column;gap:2px">' +
+        '<div style="font-size:12px;color:var(--green)"><span style="color:var(--t3);font-size:10px">ING </span>+' + fmt(ing2) + '</div>' +
+        '<div style="font-size:12px;color:var(--red)"><span style="color:var(--t3);font-size:10px">GAS </span>-' + fmt(gas2) + '</div>' +
+        '<div style="font-size:13px;font-weight:800;color:' + (net>=0?'var(--gold)':'var(--red)') + ';border-top:1px solid var(--border);padding-top:2px;margin-top:2px">' + (net>=0?'+':'') + fmt(net) + '</div>' +
       '</div></div>';
   }
   elHTML('monthly-detail', mdHTML || '<div class="empty-state"><div class="empty-icon">📅</div><div class="empty-text">Sin datos este año</div></div>');
