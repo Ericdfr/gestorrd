@@ -3494,132 +3494,85 @@ function delGastoFijo(i) {
 // ─── ESCANEAR FACTURA CON IA ───────────────────────────────
 // ─── GEMINI CONFIG ─────────────────────────────────────────
 
-var GEMINI_PROXY = 'https://vksnxkdigymlkzjynuso.supabase.co/functions/v1/gemini-scan';
-
+var _scanMon = 'DOP';
 function buildScanSheet() {
+  var today = new Date().toISOString().slice(0,10);
   return '<div class="step-header"><button class="step-back" onclick="openAddMenu()">←</button>' +
     '<div class="step-title">📷 Escanear factura</div>' +
-    '<div class="step-sub">Gemini IA extrae monto, descripción y categoría automáticamente.</div></div>' +
-    '<div style="padding:0 16px 20px">' +
-    '<div style="display:flex;gap:10px;margin-bottom:14px">' +
-      '<button onclick="openScan(\'camera\')" style="flex:1;padding:18px 8px;background:var(--gold-dim);border:1.5px solid var(--gold);border-radius:var(--r-md);color:var(--gold);font-weight:700;font-size:13px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px"><span style="font-size:28px">📸</span>Cámara</button>' +
-      '<button onclick="openScan(\'gallery\')" style="flex:1;padding:18px 8px;background:var(--surface);border:1.5px solid var(--border2);border-radius:var(--r-md);color:var(--t1);font-weight:700;font-size:13px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px"><span style="font-size:28px">🖼️</span>Galería</button>' +
+    '<div class="step-sub">Usa la cámara de tu teclado para leer el recibo.</div></div>' +
+    '<div style="padding:0 16px 24px">' +
+    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:16px;margin-bottom:16px">' +
+      '<div style="font-size:13px;color:var(--t1);font-weight:700;margin-bottom:8px">📱 Cómo usarlo:</div>' +
+      '<div style="font-size:12px;color:var(--t2);line-height:1.8">' +
+        '<b>iPhone:</b> Abre el campo de descripción → toca el ícono de cámara en el teclado → apunta al recibo → iOS lee el texto automáticamente.<br><br>' +
+        '<b>Android:</b> Abre el campo → toca el ícono de Google Lens en el teclado → selecciona el texto del recibo.' +
+      '</div>' +
     '</div>' +
-    '<input type="file" id="scan-file-camera" accept="image/*" capture="environment" style="display:none" onchange="processScan(event)">' +
-    '<input type="file" id="scan-file-gallery" accept="image/*" style="display:none" onchange="processScan(event)">' +
-    '<div id="scan-preview-wrap" style="display:none;margin-bottom:14px;position:relative">' +
-      '<img id="scan-preview-img" style="width:100%;max-height:220px;object-fit:contain;border-radius:var(--r-md);border:1px solid var(--border)">' +
+    '<div class="form-field"><label>💰 Monto</label>' +
+      '<div style="display:flex;gap:8px;margin-bottom:8px">' +
+        '<button onclick="setScanMon(\'DOP\',this)" style="flex:1;padding:8px;background:var(--gold-dim);border:1.5px solid var(--gold);border-radius:8px;color:var(--gold);font-weight:700;font-size:12px;cursor:pointer">RD$ DOP</button>' +
+        '<button onclick="setScanMon(\'USD\',this)" style="flex:1;padding:8px;background:var(--surface);border:1.5px solid var(--border2);border-radius:8px;color:var(--t2);font-weight:700;font-size:12px;cursor:pointer">$ USD</button>' +
+      '</div>' +
+      '<input id="sc-monto" type="number" inputmode="decimal" placeholder="0.00" style="font-size:24px;font-weight:700;text-align:center;padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-md);width:100%;box-sizing:border-box;color:var(--t1)">' +
     '</div>' +
-    '<div id="scan-status" style="font-size:13px;color:var(--t2);text-align:center;padding:8px 0;min-height:32px"></div>' +
+    '<div class="form-field"><label>📝 Descripción (usa cámara del teclado)</label>' +
+      '<input id="sc-desc" type="text" placeholder="Ej: Supermercado La Fe..." autocomplete="off" style="padding:14px;font-size:15px" autofocus>' +
+    '</div>' +
+    '<div class="form-field"><label>📅 Fecha</label>' +
+      '<input id="sc-fecha" type="date" value="' + today + '">' +
+    '</div>' +
+    '<div class="form-field"><label>🏷️ Categoría</label>' +
+      '<select id="sc-cat">' + getAllCats().map(function(c){ return '<option>' + c[0] + '</option>'; }).join('') + '</select>' +
+    '</div>' +
+    '<div class="form-field"><label>💳 Pagar con</label>' +
+      '<select id="sc-source"><option value="efectivo">💵 Efectivo</option>' +
+        DATA.bancos.map(function(b,i){ return '<option value="banco_' + i + '">' + (b.esTarjeta?'💳':'🏦') + ' ' + b.banco + (b.ultimos?' ···'+b.ultimos:'') + '</option>'; }).join('') +
+      '</select>' +
+    '</div>' +
+    '<button class="btn-full" style="font-size:16px" onclick="saveScanGasto()">✅ Guardar gasto</button>' +
     '</div>';
 }
 
-function processScan(event) {
-  var file = event.target.files[0];
-  if (!file) return;
-  var wrap   = document.getElementById('scan-preview-wrap');
-  var img    = document.getElementById('scan-preview-img');
-  var status = document.getElementById('scan-status');
-
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    var dataUrl = e.target.result;
-    if (img)  img.src = dataUrl;
-    if (wrap) wrap.style.display = 'block';
-    if (status) status.innerHTML = '<span style="color:var(--gold)">🤖 Gemini analizando tu factura...</span>';
-
-    var base64 = dataUrl.split(',')[1];
-    var mime   = file.type || 'image/jpeg';
-    analyzeWithGemini(base64, mime);
-  };
-  reader.readAsDataURL(file);
-  event.target.value = '';
+var _scanMon = 'DOP';
+function setScanMon(mon, btn) {
+  _scanMon = mon;
+  var btns = btn.parentNode.querySelectorAll('button');
+  btns.forEach(function(b) {
+    b.style.background = 'var(--surface)';
+    b.style.border = '1.5px solid var(--border2)';
+    b.style.color = 'var(--t2)';
+  });
+  btn.style.background = 'var(--gold-dim)';
+  btn.style.border = '1.5px solid var(--gold)';
+  btn.style.color = 'var(--gold)';
 }
-
-function analyzeWithGemini(base64, mime) {
-  var status = document.getElementById('scan-status');
-  var today  = new Date().toISOString().slice(0,10);
-
-  // If no proxy configured, go straight to manual mode
-  if (!GEMINI_PROXY) {
-    if (status) status.innerHTML = '📋 <strong style="color:var(--gold)">Foto lista</strong> — completa los datos del recibo.';
-    setTimeout(function() { scanFallback(status, today); }, 800);
-    return;
-  }
-
-  var cats = CAT_LIST.map(function(c){ return c[0]; }).slice(0, 18).join(', ');
-  var prompt = 'Analiza esta factura. Extrae: nombre del negocio, monto total, moneda (USD o DOP), categoría de esta lista: ' + cats + '. Responde SOLO JSON: {"descripcion":"...","monto":0.00,"moneda":"DOP","categoria":"...","fecha":"' + today + '"}';
-
-  try {
-    fetch(GEMINI_PROXY, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: base64, mime: mime, prompt: prompt })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      try {
-        var text = (data.text || '').replace(/```json|```/g, '').trim();
-        var s = text.indexOf('{'), e2 = text.lastIndexOf('}');
-        if (s < 0) throw new Error();
-        var parsed = JSON.parse(text.slice(s, e2 + 1));
-        if (parsed.monto > 0) { applyScanResult(parsed, status); return; }
-      } catch(e) {}
-      scanFallback(status, today);
-    })
-    .catch(function() { scanFallback(status, today); });
-  } catch(e) {
-    scanFallback(status, today);
-  }
-}
-
-function applyScanResult(data, status) {
-  // Pre-fill wizard state with extracted data
-  _wgMonto   = parseFloat(data.monto) || 0;
-  _wgDesc    = data.descripcion || '';
-  _wgFecha   = data.fecha || new Date().toISOString().slice(0,10);
-  _gastoMon  = (data.moneda === 'USD') ? 'USD' : 'DOP';
-  _selCat    = data.categoria || '';
-  _wgStep    = 1;
-
-  if (status) status.innerHTML =
-    '✅ <strong style="color:var(--green)">Extraído:</strong> ' +
-    (data.descripcion ? '<strong>' + data.descripcion + '</strong> — ' : '') +
-    (_gastoMon === 'USD' ? '$' : 'RD$') + parseFloat(data.monto).toFixed(2) +
-    ' · ' + (data.categoria || '') +
-    '<br><span style="font-size:11px;color:var(--t3)">Revisa y ajusta si es necesario</span>';
-
-  setTimeout(function() {
-    // Go directly to step 2 (category) since monto already filled, or step 1 if monto=0
-    if (_wgMonto > 0) {
-      _wgStep = 2;
-      var sc = document.getElementById('sheet-content');
-      if (sc) sc.innerHTML = _buildWizardStep(2, null);
-      // Auto-select the category if it matches
-      setTimeout(function() {
-        if (_selCat) {
-          document.querySelectorAll('.cat-btn').forEach(function(btn) {
-            if (btn.textContent.trim().indexOf(_selCat.trim().slice(-6)) >= 0) {
-              btn.classList.add('sel');
-            }
-          });
-        }
-      }, 100);
-    } else {
-      var sc = document.getElementById('sheet-content');
-      if (sc) sc.innerHTML = _buildWizardStep(1, null);
+function saveScanGasto() {
+  var monto = parseFloat(v('sc-monto'));
+  var desc  = v('sc-desc') || '';
+  var fecha = v('sc-fecha') || new Date().toISOString().slice(0,10);
+  var cat   = v('sc-cat') || '';
+  var src   = v('sc-source') || 'efectivo';
+  if (!monto || monto <= 0) { showToast('Ingresa el monto'); return; }
+  if (!cat) { showToast('Selecciona una categoría'); return; }
+  var d = dateInfo(fecha);
+  DATA.gastos.push({ id: Date.now(), monto: monto, mon: _scanMon, cat: cat, desc: desc, fecha: fecha, month: d.month, year: d.year, source: src });
+  if (src && src.startsWith('banco_')) {
+    var idx = parseInt(src.split('_')[1]);
+    var banco = DATA.bancos[idx];
+    if (banco) {
+      if (banco.esTarjeta) {
+        if (_scanMon === 'USD') { banco.saldoUSD = Math.round(((banco.saldoUSD||0)+monto)*100)/100; banco.dispUSD = Math.max(0, Math.round(((banco.dispUSD||0)-monto)*100)/100); }
+        else { banco.saldoDOP = Math.round(((banco.saldoDOP||0)+monto)*100)/100; banco.dispDOP = Math.max(0, Math.round(((banco.dispDOP||0)-monto)*100)/100); }
+        banco.bal = banco.saldoUSD || 0;
+      } else {
+        banco.bal = Math.round(((banco.bal||0)-monto)*100)/100;
+      }
     }
-  }, 1500);
+  }
+  save(); closeSheet(); refreshHome(); refreshCuentas();
+  showToast('✅ Gasto guardado: ' + (_scanMon==='DOP'?'RD$':'$') + monto.toFixed(2));
 }
 
-function scanFallback(status, today) {
-  if (status) status.innerHTML = '⚠️ No pude leer la factura. <br><span style="font-size:11px;color:var(--t3)">Ingresa los datos manualmente.</span>';
-  setTimeout(function() {
-    _wgStep = 1; _wgMonto = 0; _wgDesc = ''; _wgFecha = today; _gastoMon = 'DOP'; _selCat = '';
-    var sc = document.getElementById('sheet-content');
-    if (sc) sc.innerHTML = _buildWizardStep(1, null);
-  }, 1500);
-}
 
 function buildTasaSheet() {
   return '<div class="step-header"><div class="step-title">Tasa USD / DOP</div></div>' +
