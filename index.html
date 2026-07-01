@@ -1883,8 +1883,10 @@ function refreshHome() {
   var tBan = DATA.bancos.filter(function(b){ return !b.esTarjeta; }).reduce(function(a,b){ return a+toUSD(b.bal||0,b.mon); }, 0);
   var tPG = prevGas.reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
 
-  // Balance — show bank total as "available"
-  var avail = tBan > 0 ? tBan : Math.max(0, tI - tG);
+  // Balance — "Disponible este mes" = ingresos - gastos del mes actual
+  var avail = tI - tG;
+  // If no income recorded yet but has bank balance, show bank as reference
+  var availDisplay = (tI === 0 && tBan > 0) ? tBan : Math.max(0, avail);
 
   // Month label
   el('mnl', MONTHS[cur] + ' ' + curY);
@@ -1896,7 +1898,7 @@ function refreshHome() {
   el('home-name', DATA.userName ? DATA.userName + ' 👋' : '👋');
 
   // Balance
-  el('bal-amount', fmt(avail));
+  el('bal-amount', fmt(availDisplay));
 
   // Change vs prev
   var chgPct = tPG > 0 ? ((tG - tPG) / tPG * 100) : null;
@@ -1913,8 +1915,8 @@ function refreshHome() {
     }
   }
 
-  // Donut — available / gastos / ahorros proportions relative to income or bank total
-  var base = Math.max(tI, tG, avail) || 1;
+  // Donut — available / gastos / ahorros proportions relative to income
+  var base = Math.max(tI, tG, 1);
   var pAvail = Math.round((Math.max(0, tI - tG) / base) * 100);
   var pGas   = Math.round((tG / base) * 100);
   var pSav   = Math.round((tAh / base) * 100);
@@ -2437,7 +2439,8 @@ function openSheet(type, id) {
   else if (type === 'historial') html = buildHistorialSheet();
   else if (type === 'ia-chat') html = buildIASheet();
   else if (type === 'importar') html = buildImportSheet();
-  else html = '<div style="padding:0 20px 20px"><p style="color:var(--t2)">Próximamente.</p></div>';
+  else if (type === 'edit-banco') html = buildEditBancoSheet(id);
+  else html = '<div style="padding:20px"><p style="color:var(--t2)">Próximamente.</p></div>';
   openSheetWith(html);
 }
 function openSheetWith(html) {
@@ -2780,6 +2783,46 @@ function saveMeta() {
   DATA.ahorros.push({ id: Date.now(), meta: nom, actual: parseFloat(v('mt-act'))||0, total: tot, mon: v('mt-mon'), fecha: v('mt-fecha') });
   save(); closeSheet(); refreshHome(); refreshCuentas();
   showToast('Meta guardada ✓');
+}
+
+function buildEditBancoSheet(bancoId) {
+  var b = DATA.bancos.find(function(x){ return x.id === bancoId; });
+  if (!b) return '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button><div class="step-title">Cuenta no encontrada</div></div>';
+  var icon = b.esTarjeta ? '💳' : '🏦';
+  return '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button>' +
+    '<div class="step-title">' + icon + ' ' + (b.nom || b.banco) + '</div>' +
+    '<div class="step-sub">' + (b.tipo||'Cuenta') + (b.ultimos?' · ···'+b.ultimos:'') + '</div></div>' +
+    '<div style="padding:0 16px 24px">' +
+    // Info card
+    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 16px;margin-bottom:16px">' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;color:var(--t3)">BANCO</span><span style="font-size:14px;font-weight:700;color:var(--t1)">' + b.banco + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;color:var(--t3)">MONEDA</span><span style="font-size:14px;font-weight:700;color:var(--t1)">' + (b.mon||'DOP') + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--t3)">BALANCE ACTUAL</span><span style="font-size:16px;font-weight:900;color:var(--gold)">' + fmt(b.bal||0, b.mon) + '</span></div>' +
+    '</div>' +
+    // Edit balance
+    '<div class="form-field"><label>Actualizar balance</label>' +
+    '<input id="edit-banco-bal" type="number" inputmode="decimal" placeholder="' + (b.bal||0) + '" value="' + (b.bal||0) + '"></div>' +
+    '<button class="btn-full" onclick="updateBancoBalance(' + bancoId + ')" style="margin-bottom:12px">💾 Guardar balance</button>' +
+    // Delete
+    '<button onclick="deleteBanco(' + bancoId + ')" style="width:100%;padding:14px;background:var(--red-bg);border:1px solid var(--red-bdr);border-radius:var(--r-md);color:var(--red);font-size:14px;font-weight:700;cursor:pointer">🗑️ Eliminar esta cuenta</button>' +
+    '</div>';
+}
+function updateBancoBalance(bancoId) {
+  var b = DATA.bancos.find(function(x){ return x.id === bancoId; });
+  if (!b) return;
+  var newBal = parseFloat(v('edit-banco-bal'));
+  if (isNaN(newBal)) { showToast('Ingresa un balance válido'); return; }
+  b.bal = newBal;
+  save(); closeSheet(); refreshCuentas(); refreshHome();
+  showToast('Balance actualizado ✓');
+}
+function deleteBanco(bancoId) {
+  var idx = DATA.bancos.findIndex(function(x){ return x.id === bancoId; });
+  if (idx === -1) { showToast('Cuenta no encontrada'); return; }
+  var nombre = DATA.bancos[idx].banco;
+  DATA.bancos.splice(idx, 1);
+  save(); closeSheet(); refreshCuentas(); refreshHome();
+  showToast('Cuenta "' + nombre + '" eliminada');
 }
 
 function buildBancoSheet() {
@@ -3438,6 +3481,8 @@ function _localAIAnswer(msg) {
   var tG = curGas.reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
   var tB = (DATA.bancos||[]).reduce(function(a,b){ return !b.esTarjeta?a+toUSD(b.bal||0,b.mon):a; }, 0);
   var tD = (DATA.deudas||[]).filter(function(d){ return d.estado!=='Pagado'; }).reduce(function(a,d){ return a+toUSD(d.bal||0,d.mon); }, 0);
+  var numPresup = (DATA.presupuesto||[]).length;
+  var numMetas  = (DATA.metas||[]).length;
   var net = tI - tG;
   var cats = {};
   curGas.forEach(function(g){ cats[g.cat||'Otros']=(cats[g.cat||'Otros']||0)+toUSD(g.monto,g.mon); });
@@ -3451,12 +3496,20 @@ function _localAIAnswer(msg) {
     var top3 = sortedCats.slice(0,3).map(function(k,i){ return (i+1)+'. '+k+': '+fmt(cats[k]); }).join('\n');
     return '📊 Tu mayor gasto este mes es **' + topCat + '** con ' + fmt(cats[topCat]) + ', que representa el ' + (tG>0?Math.round(cats[topCat]/tG*100):0) + '% de tus gastos totales.\n\nTop 3:\n' + top3;
   }
-  if (mL.includes('ahorrar') || mL.includes('ahorro')) {
-    if (tI === 0) return '💡 Registra tus ingresos primero para que pueda darte recomendaciones de ahorro personalizadas.';
-    var savRate = tI > 0 ? Math.round((net/tI)*100) : 0;
-    var canSave = Math.max(0, net * 0.2);
-    if (net <= 0) return '⚠️ Este mes estás gastando más de lo que ingresas (' + fmt(Math.abs(net)) + ' de déficit). Prioriza reducir ' + (topCat||'tus gastos principales') + ' para volver a equilibrio.';
-    return '💰 Estás ahorrando el ' + savRate + '% de tus ingresos este mes. Lo ideal es llegar al 20%.\n\n' + (savRate < 20 ? 'Podrías ahorrar ' + fmt(canSave) + ' adicionales reduciendo ' + (topCat||'gastos variables') + '.' : '¡Vas muy bien! Mantén ese ritmo y considera invertir el excedente.');
+  if (mL.includes('ahorrar') || mL.includes('ahorro') || mL.includes('cuánto puedo') || mL.includes('cuanto puedo')) {
+    if (tI === 0 && tB === 0) return '💡 Aún no tienes ingresos ni cuentas registradas. Agrega tu ingreso mensual para calcular cuánto puedes ahorrar.';
+    if (tI === 0 && tB > 0) {
+      var recSave = Math.round(tB * 0.1);
+      return '🐷 No tienes ingresos registrados este mes, pero tienes **' + fmt(tB) + '** en cuentas.\n\nComo referencia, si ahorras el 10% de tu saldo disponible serían **' + fmt(recSave) + '**. Registra tus ingresos mensuales para un análisis más preciso.';
+    }
+    var savRate = Math.round((net/tI)*100);
+    var canSave20 = Math.max(0, tI * 0.20 - Math.max(0, tI*0.20 - net));
+    if (net <= 0) return '⚠️ Este mes estás gastando **' + fmt(Math.abs(net)) + '** más de lo que ingresas. Para ahorrar necesitas primero reducir ' + (topCat ? topCat : 'tus gastos principales') + '.';
+    return '🐷 Este mes tienes un excedente de **' + fmt(net) + '** (ingresos ' + fmt(tI) + ' − gastos ' + fmt(tG) + ').\n\n' +
+      '• Ahorro conservador (10%): **' + fmt(tI*0.10) + '**\n' +
+      '• Ahorro recomendado (20%): **' + fmt(tI*0.20) + '**\n' +
+      '• Máximo posible: **' + fmt(net) + '**\n\n' +
+      (savRate >= 20 ? '✅ ¡Excelente! Ya estás ahorrando el ' + savRate + '% de tus ingresos.' : '💡 Actualmente ahorras el ' + savRate + '% — intenta llegar al 20%.');
   }
   if (mL.includes('carro') || mL.includes('coche') || mL.includes('auto') || mL.includes('vehiculo') || mL.includes('vehículo')) {
     var precio = 15000;
@@ -3495,6 +3548,32 @@ function _localAIAnswer(msg) {
   if (mL.includes('balance') || mL.includes('saldo') || mL.includes('cómo estoy') || mL.includes('como estoy') || mL.includes('resumen')) {
     var emoji = net >= 0 ? '✅' : '⚠️';
     return emoji + ' **Resumen de ' + ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][cur] + ':**\n\n• Ingresos: ' + fmt(tI) + '\n• Gastos: ' + fmt(tG) + '\n• Balance: ' + (net>=0?'+':'') + fmt(net) + '\n• Saldo en cuentas: ' + fmt(tB) + '\n• Deudas activas: ' + fmt(tD) + '\n\n' + (net >= 0 ? 'Vas bien este mes.' : 'Estás en déficit. Revisa tus gastos en ' + (topCat||'las categorías principales') + '.');
+  }
+  if (mL.includes('mejorar') || mL.includes('mejor') || mL.includes('consejo') || mL.includes('recomend')) {
+    var tips = [];
+    if (tI === 0) tips.push('📌 Registra tus ingresos para obtener un análisis completo');
+    if (tG > tI && tI > 0) tips.push('⚠️ Estás gastando más de lo que ingresas — revisa tus gastos variables');
+    if (numPresup === 0) tips.push('📊 Crea un presupuesto por categoría para controlar tus gastos');
+    if (numMetas === 0) tips.push('🎯 Define una meta de ahorro — ayuda a mantener el enfoque');
+    if (tD > 0 && tI > 0 && tD > tI * 3) tips.push('💳 Tus deudas son altas vs tus ingresos — prioriza pagarlas');
+    if (topCat && cats[topCat] > tI * 0.4 && tI > 0) tips.push('💡 ' + topCat + ' representa más del 40% de tus gastos — intenta reducirlo');
+    if (tips.length === 0) tips.push('✅ Tus finanzas se ven bien. Sigue registrando movimientos para análisis más precisos');
+    return '📈 **Recomendaciones para mejorar:**\n\n' + tips.join('\n');
+  }
+  if (mL.includes('score') || mL.includes('puntaje') || mL.includes('puntuación') || mL.includes('puntuacion') || mL.includes('subo') || mL.includes('subir')) {
+    var sc2 = SCORE.run();
+    var tips2 = [];
+    sc2.factors.forEach(function(f) {
+      var pct2 = f.max > 0 ? Math.round(f.pts/f.max*100) : 0;
+      if (pct2 < 60) {
+        if (f.name === 'Ahorro') tips2.push('🐷 Ahorro (' + f.pts + '/' + f.max + ' pts): guarda al menos el 10% de tus ingresos cada mes');
+        if (f.name === 'Control gastos') tips2.push('💸 Control de gastos (' + f.pts + '/' + f.max + ' pts): mantén gastos por debajo del 80% de tus ingresos');
+        if (f.name === 'Presupuesto') tips2.push('📊 Presupuesto (' + f.pts + '/' + f.max + ' pts): define límites por categoría y no los superes');
+        if (f.name === 'Crecimiento') tips2.push('📈 Crecimiento (' + f.pts + '/' + f.max + ' pts): registra al menos 5 movimientos por mes');
+      }
+    });
+    if (tips2.length === 0) return '⭐ Tu score de **' + sc2.total + ' puntos** está muy bien. Sigue manteniendo tus hábitos actuales.';
+    return '⭐ Tu score actual es **' + sc2.total + ' pts**. Para subirlo:\n\n' + tips2.join('\n');
   }
   // Generic fallback with actual data
   if (tI === 0 && tG === 0) {
