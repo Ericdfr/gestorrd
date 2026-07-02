@@ -2470,7 +2470,7 @@ function openAuthFromProfile() {
 function openAddMenu() {
   var html = '<div class="add-menu-title">Agregar</div>' +
     '<div class="add-menu-grid">' +
-    makeAddBtn('📷','Escanear','Leer factura con IA',"openSheet('scan-recibo')") +
+    makeAddBtn('📷','Escanear','Foto de factura con IA',"openSheet('scan-recibo')") +
     makeAddBtn('🔁','Gasto fijo','Recurrente mensual',"openSheet('gastos-fijos')") +
     makeAddBtn('💳','Deuda','Tarjeta o préstamo',"openSheet('add-deuda')") +
     makeAddBtn('🎯','Meta','Objetivo de ahorro',"openSheet('add-meta')") +
@@ -3495,82 +3495,208 @@ function delGastoFijo(i) {
 // ─── GEMINI CONFIG ─────────────────────────────────────────
 
 var _scanMon = 'DOP';
+// ─── SCAN CONFIG ───────────────────────────────────────────
+// JWT anon key for Storage uploads (different from the publishable key)
+var SUPABASE_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc254a2RpZ3ltbGt6anludXNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkzMzk4ODYsImV4cCI6MjA2NDkxNTg4Nn0.tphGSPqfDPMsR2aB_7OON0SdJFYGLIlAGHiiyOXR2Fc';
+var OPENAI_KEY = ''; // Pega tu API key: sk-proj-...
+
 function buildScanSheet() {
   var today = new Date().toISOString().slice(0,10);
+  var hasOpenAI = OPENAI_KEY && OPENAI_KEY.startsWith('sk-');
   return '<div class="step-header"><button class="step-back" onclick="openAddMenu()">←</button>' +
     '<div class="step-title">📷 Escanear factura</div>' +
-    '<div class="step-sub">Usa la cámara de tu teclado para leer el recibo.</div></div>' +
+    '<div class="step-sub">' + (hasOpenAI ? 'IA extrae los datos automáticamente y guarda la foto en la nube.' : 'Toma la foto y llena los datos.') + '</div></div>' +
     '<div style="padding:0 16px 24px">' +
-    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:16px;margin-bottom:16px">' +
-      '<div style="font-size:13px;color:var(--t1);font-weight:700;margin-bottom:8px">📱 Cómo usarlo:</div>' +
-      '<div style="font-size:12px;color:var(--t2);line-height:1.8">' +
-        '<b>iPhone:</b> Abre el campo de descripción → toca el ícono de cámara en el teclado → apunta al recibo → iOS lee el texto automáticamente.<br><br>' +
-        '<b>Android:</b> Abre el campo → toca el ícono de Google Lens en el teclado → selecciona el texto del recibo.' +
+    // Camera button
+    '<div style="margin-bottom:16px">' +
+      '<input type="file" id="scan-input" accept="image/*" capture="environment" style="display:none" onchange="processScan(event)">' +
+      '<button onclick="document.getElementById(\'scan-input\').click()" style="width:100%;padding:20px;background:var(--gold-dim);border:2px dashed var(--gold);border-radius:var(--r-md);color:var(--gold);font-size:16px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px">' +
+        '<span style="font-size:36px">📸</span>' +
+        '<span>Tomar foto del recibo</span>' +
+        '<span style="font-size:11px;font-weight:400;color:var(--t3)">También puedes subir desde galería</span>' +
+      '</button>' +
+    '</div>' +
+    // Preview
+    '<div id="scan-preview-wrap" style="display:none;margin-bottom:12px;position:relative">' +
+      '<img id="scan-preview-img" style="width:100%;max-height:200px;object-fit:contain;border-radius:var(--r-md);border:1px solid var(--border)">' +
+      '<div id="scan-status" style="text-align:center;padding:8px;font-size:13px;color:var(--gold)"></div>' +
+    '</div>' +
+    // Manual form (shown after photo or directly)
+    '<div id="scan-form" style="display:none">' +
+      '<div style="display:flex;gap:8px;margin-bottom:10px">' +
+        '<button onclick="setScanMon(\'DOP\',this)" id="sc-btn-dop" style="flex:1;padding:9px;background:var(--gold-dim);border:1.5px solid var(--gold);border-radius:10px;color:var(--gold);font-weight:700;font-size:12px;cursor:pointer">🇩🇴 Pesos</button>' +
+        '<button onclick="setScanMon(\'USD\',this)" id="sc-btn-usd" style="flex:1;padding:9px;background:var(--surface);border:1.5px solid var(--border2);border-radius:10px;color:var(--t2);font-weight:700;font-size:12px;cursor:pointer">🇺🇸 Dólares</button>' +
       '</div>' +
+      '<div class="form-field"><label>Monto</label><input id="sc-monto" type="number" inputmode="decimal" placeholder="0.00" style="font-size:24px;font-weight:800;text-align:center"></div>' +
+      '<div class="form-field"><label>Descripción / Negocio</label><input id="sc-desc" type="text" placeholder="Ej: Supermercado La Fe..."></div>' +
+      '<div class="form-field"><label>Categoría</label><select id="sc-cat">' + getAllCats().map(function(c){ return '<option>' + c[0] + '</option>'; }).join('') + '</select></div>' +
+      '<div class="form-field"><label>Fecha</label><input id="sc-fecha" type="date" value="' + today + '"></div>' +
+      '<div class="form-field"><label>Pagar con</label><select id="sc-source"><option value="efectivo">💵 Efectivo</option>' +
+        DATA.bancos.map(function(b,i){ return '<option value="banco_' + i + '">' + (b.esTarjeta?'💳':'🏦') + ' ' + (b.nom||b.banco) + (b.ultimos?' ···'+b.ultimos:'') + '</option>'; }).join('') +
+      '</select></div>' +
+      '<button class="btn-full" onclick="saveScanGasto()">✅ Guardar gasto</button>' +
     '</div>' +
-    '<div class="form-field"><label>💰 Monto</label>' +
-      '<div style="display:flex;gap:8px;margin-bottom:8px">' +
-        '<button onclick="setScanMon(\'DOP\',this)" style="flex:1;padding:8px;background:var(--gold-dim);border:1.5px solid var(--gold);border-radius:8px;color:var(--gold);font-weight:700;font-size:12px;cursor:pointer">RD$ DOP</button>' +
-        '<button onclick="setScanMon(\'USD\',this)" style="flex:1;padding:8px;background:var(--surface);border:1.5px solid var(--border2);border-radius:8px;color:var(--t2);font-weight:700;font-size:12px;cursor:pointer">$ USD</button>' +
-      '</div>' +
-      '<input id="sc-monto" type="number" inputmode="decimal" placeholder="0.00" style="font-size:24px;font-weight:700;text-align:center;padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-md);width:100%;box-sizing:border-box;color:var(--t1)">' +
-    '</div>' +
-    '<div class="form-field"><label>📝 Descripción (usa cámara del teclado)</label>' +
-      '<input id="sc-desc" type="text" placeholder="Ej: Supermercado La Fe..." autocomplete="off" style="padding:14px;font-size:15px" autofocus>' +
-    '</div>' +
-    '<div class="form-field"><label>📅 Fecha</label>' +
-      '<input id="sc-fecha" type="date" value="' + today + '">' +
-    '</div>' +
-    '<div class="form-field"><label>🏷️ Categoría</label>' +
-      '<select id="sc-cat">' + getAllCats().map(function(c){ return '<option>' + c[0] + '</option>'; }).join('') + '</select>' +
-    '</div>' +
-    '<div class="form-field"><label>💳 Pagar con</label>' +
-      '<select id="sc-source"><option value="efectivo">💵 Efectivo</option>' +
-        DATA.bancos.map(function(b,i){ return '<option value="banco_' + i + '">' + (b.esTarjeta?'💳':'🏦') + ' ' + b.banco + (b.ultimos?' ···'+b.ultimos:'') + '</option>'; }).join('') +
-      '</select>' +
-    '</div>' +
-    '<button class="btn-full" style="font-size:16px" onclick="saveScanGasto()">✅ Guardar gasto</button>' +
     '</div>';
 }
 
 var _scanMon = 'DOP';
+var _scanPhotoUrl = null;
+
 function setScanMon(mon, btn) {
   _scanMon = mon;
-  var btns = btn.parentNode.querySelectorAll('button');
-  btns.forEach(function(b) {
-    b.style.background = 'var(--surface)';
-    b.style.border = '1.5px solid var(--border2)';
-    b.style.color = 'var(--t2)';
+  ['sc-btn-dop','sc-btn-usd'].forEach(function(id) {
+    var b = document.getElementById(id);
+    if (!b) return;
+    var active = (id === 'sc-btn-dop' && mon === 'DOP') || (id === 'sc-btn-usd' && mon === 'USD');
+    b.style.background = active ? 'var(--gold-dim)' : 'var(--surface)';
+    b.style.border = active ? '1.5px solid var(--gold)' : '1.5px solid var(--border2)';
+    b.style.color = active ? 'var(--gold)' : 'var(--t2)';
   });
-  btn.style.background = 'var(--gold-dim)';
-  btn.style.border = '1.5px solid var(--gold)';
-  btn.style.color = 'var(--gold)';
 }
+
+function processScan(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var wrap   = document.getElementById('scan-preview-wrap');
+  var img    = document.getElementById('scan-preview-img');
+  var status = document.getElementById('scan-status');
+  var form   = document.getElementById('scan-form');
+  _scanPhotoUrl = null;
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    if (img) img.src = e.target.result;
+    if (wrap) wrap.style.display = 'block';
+    if (status) status.innerHTML = '⏳ Subiendo foto...';
+
+    var base64 = e.target.result.split(',')[1];
+    var mime   = file.type || 'image/jpeg';
+    var ext    = mime.split('/')[1] || 'jpg';
+    var userId = DATA.userName || 'guest';
+    var fname  = userId + '/' + Date.now() + '.' + ext;
+
+    // Upload to Supabase Storage using the JS client (already authenticated)
+    var uploadPromise;
+    if (sb && sb.storage) {
+      // Use Supabase JS client — handles auth automatically
+      var blob = new Blob([Uint8Array.from(atob(base64), function(c){ return c.charCodeAt(0); })], { type: mime });
+      uploadPromise = sb.storage.from('facturas').upload(fname, blob, { contentType: mime, upsert: true })
+        .then(function(result) {
+          if (result.error) return Promise.reject(result.error.message);
+          return result;
+        });
+    } else {
+      // Fallback: raw fetch with JWT
+      uploadPromise = fetch(SUPABASE_URL + '/storage/v1/object/facturas/' + fname, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + SUPABASE_JWT, 'Content-Type': mime, 'x-upsert': 'true' },
+        body: Uint8Array.from(atob(base64), function(c){ return c.charCodeAt(0); })
+      }).then(function(r) { return r.ok ? r.json() : r.text().then(function(t) { return Promise.reject(t); }); });
+    }
+
+    uploadPromise
+    .then(function() {
+      _scanPhotoUrl = SUPABASE_URL + '/storage/v1/object/public/facturas/' + fname;
+      if (status) status.innerHTML = '✅ Foto guardada en la nube';
+
+      // If OpenAI key configured — extract data with vision
+      if (OPENAI_KEY && OPENAI_KEY.startsWith('sk-')) {
+        if (status) status.innerHTML = '🤖 OpenAI leyendo la factura...';
+        extractWithOpenAI(_scanPhotoUrl, mime, base64, status, form);
+      } else {
+        // No OpenAI key — show form manually
+        if (form) form.style.display = 'block';
+        if (status) status.innerHTML = '📋 Foto guardada · llena los datos';
+      }
+    })
+    .catch(function(err) {
+      // Upload failed — still show form
+      if (status) status.innerHTML = '⚠️ No se pudo subir la foto · llena los datos';
+      if (form) form.style.display = 'block';
+    });
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function extractWithOpenAI(photoUrl, mime, base64, status, form) {
+  var today = new Date().toISOString().slice(0,10);
+  var cats  = CAT_LIST.map(function(c){ return c[0]; }).slice(0,18).join(', ');
+  var prompt = 'Analiza esta factura o recibo. Extrae: 1) nombre del negocio o descripción, 2) monto total a pagar (solo el número), 3) moneda (USD si son dólares, DOP si son pesos dominicanos), 4) categoría de esta lista: ' + cats + '. Responde ÚNICAMENTE con este JSON sin texto adicional ni markdown: {"descripcion":"...","monto":0.00,"moneda":"DOP","categoria":"...","fecha":"' + today + '"}';
+
+  fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + OPENAI_KEY },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      max_tokens: 200,
+      messages: [{ role: 'user', content: [
+        { type: 'image_url', image_url: { url: 'data:' + mime + ';base64,' + base64 } },
+        { type: 'text', text: prompt }
+      ]}]
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    var text = '';
+    try { text = data.choices[0].message.content.trim().replace(/```json|```/g,'').trim(); } catch(e) {}
+    try {
+      var s = text.indexOf('{'), e2 = text.lastIndexOf('}');
+      var parsed = JSON.parse(text.slice(s, e2+1));
+      if (parsed.monto > 0) {
+        // Pre-fill form
+        _scanMon = parsed.moneda === 'USD' ? 'USD' : 'DOP';
+        if (form) form.style.display = 'block';
+        setTimeout(function() {
+          var mEl = document.getElementById('sc-monto'); if (mEl) mEl.value = parsed.monto;
+          var dEl = document.getElementById('sc-desc');  if (dEl) dEl.value = parsed.descripcion || '';
+          var fEl = document.getElementById('sc-fecha'); if (fEl && parsed.fecha) fEl.value = parsed.fecha;
+          var cEl = document.getElementById('sc-cat');
+          if (cEl && parsed.categoria) {
+            for (var i=0; i<cEl.options.length; i++) {
+              if (cEl.options[i].text.indexOf(parsed.categoria.slice(-4)) >= 0) { cEl.selectedIndex = i; break; }
+            }
+          }
+          setScanMon(_scanMon, document.getElementById(_scanMon==='DOP'?'sc-btn-dop':'sc-btn-usd'));
+          if (status) status.innerHTML = '✅ <strong style="color:var(--green)">IA extrajo:</strong> ' + (parsed.descripcion||'') + ' — ' + (_scanMon==='DOP'?'RD$':'$') + parsed.monto;
+        }, 100);
+        return;
+      }
+    } catch(err) {}
+    if (form) form.style.display = 'block';
+    if (status) status.innerHTML = '⚠️ No pude leer todos los datos · revisa manualmente';
+  })
+  .catch(function() {
+    if (form) form.style.display = 'block';
+    if (status) status.innerHTML = '⚠️ Error de conexión · llena los datos';
+  });
+}
+
 function saveScanGasto() {
-  var monto = parseFloat(v('sc-monto'));
+  var monto = parseFloat(document.getElementById('sc-monto') ? document.getElementById('sc-monto').value : 0);
   var desc  = v('sc-desc') || '';
   var fecha = v('sc-fecha') || new Date().toISOString().slice(0,10);
   var cat   = v('sc-cat') || '';
   var src   = v('sc-source') || 'efectivo';
   if (!monto || monto <= 0) { showToast('Ingresa el monto'); return; }
-  if (!cat) { showToast('Selecciona una categoría'); return; }
   var d = dateInfo(fecha);
-  DATA.gastos.push({ id: Date.now(), monto: monto, mon: _scanMon, cat: cat, desc: desc, fecha: fecha, month: d.month, year: d.year, source: src });
+  DATA.gastos.push({ id: Date.now(), monto: monto, mon: _scanMon, cat: cat, desc: desc, fecha: fecha, month: d.month, year: d.year, source: src, fotoUrl: _scanPhotoUrl || null });
   if (src && src.startsWith('banco_')) {
     var idx = parseInt(src.split('_')[1]);
     var banco = DATA.bancos[idx];
     if (banco) {
       if (banco.esTarjeta) {
-        if (_scanMon === 'USD') { banco.saldoUSD = Math.round(((banco.saldoUSD||0)+monto)*100)/100; banco.dispUSD = Math.max(0, Math.round(((banco.dispUSD||0)-monto)*100)/100); }
-        else { banco.saldoDOP = Math.round(((banco.saldoDOP||0)+monto)*100)/100; banco.dispDOP = Math.max(0, Math.round(((banco.dispDOP||0)-monto)*100)/100); }
-        banco.bal = banco.saldoUSD || 0;
+        if (_scanMon==='USD') { banco.saldoUSD=Math.round(((banco.saldoUSD||0)+monto)*100)/100; banco.dispUSD=Math.max(0,Math.round(((banco.dispUSD||0)-monto)*100)/100); }
+        else { banco.saldoDOP=Math.round(((banco.saldoDOP||0)+monto)*100)/100; banco.dispDOP=Math.max(0,Math.round(((banco.dispDOP||0)-monto)*100)/100); }
+        banco.bal = banco.saldoUSD||0;
       } else {
         banco.bal = Math.round(((banco.bal||0)-monto)*100)/100;
       }
     }
   }
+  _scanPhotoUrl = null;
   save(); closeSheet(); refreshHome(); refreshCuentas();
-  showToast('✅ Gasto guardado: ' + (_scanMon==='DOP'?'RD$':'$') + monto.toFixed(2));
+  showToast('✅ Gasto guardado' + (monto?' · ' + (_scanMon==='DOP'?'RD$':'$')+monto.toFixed(2):''));
 }
 
 
