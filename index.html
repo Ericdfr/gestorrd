@@ -1342,11 +1342,12 @@ canvas { max-width: 100%; display: block; }
 
     <!-- ══ PROFILE SCREEN ══ -->
     <div class="screen" id="screen-perfil">
-      <div class="profile-top">
+      <div class="profile-top" onclick="openSheet('edit-profile')" style="cursor:pointer">
         <div class="profile-avatar" id="profile-avatar">G</div>
         <div>
           <div class="profile-name" id="profile-name">Usuario</div>
           <div class="profile-email" id="profile-email">Sin cuenta (local)</div>
+          <div style="font-size:11px;color:var(--gold);margin-top:2px">✏️ Editar nombre</div>
         </div>
       </div>
 
@@ -1917,9 +1918,9 @@ function refreshHome() {
 
   // Balance — "Disponible este mes" = ingresos - gastos del mes actual
   var avail = tI - tG;
-  var hasAnyIncome = DATA.ingresos.length > 0;
-  // Show bank balance only if user has never registered any income at all
-  var availDisplay = (!hasAnyIncome && tBan > 0) ? tBan : Math.max(0, avail);
+  var hasMonthActivity = tI > 0 || tG > 0;
+  // Show bank balance only if no activity recorded at all this month
+  var availDisplay = (!hasMonthActivity && tBan > 0) ? tBan : Math.max(0, avail);
 
   // Split balance: USA accounts (USD) vs RD accounts
   var bancos = DATA.bancos || [];
@@ -2224,8 +2225,9 @@ function refreshCuentas() {
 var reportPeriod = 'mes';
 function setPeriod(p) {
   reportPeriod = p;
-  document.querySelectorAll('.period-tab').forEach(function(b) { b.classList.remove('active'); });
-  event.target.classList.add('active');
+  document.querySelectorAll('.period-tab').forEach(function(b) {
+    b.classList.toggle('active', b.getAttribute('onclick').indexOf("'" + p + "'") >= 0);
+  });
   refreshReportes();
 }
 // ─── COMPARACIÓN MENSUAL ────────────────────────────────────
@@ -2233,31 +2235,55 @@ function updComparacion() {
   var el2 = document.getElementById('comp-card');
   if (!el2) return;
   var cur = DATA.curMonth, curY = DATA.curYear;
-  var prev = cur === 0 ? 11 : cur - 1, prevY = cur === 0 ? curY - 1 : curY;
-  var curI = DATA.ingresos.filter(function(x){ return x.month===cur && x.year===curY; }).reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
-  var curG = DATA.gastos.filter(function(x){ return x.month===cur && x.year===curY; }).reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
-  var prevI = DATA.ingresos.filter(function(x){ return x.month===prev && x.year===prevY; }).reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
-  var prevG = DATA.gastos.filter(function(x){ return x.month===prev && x.year===prevY; }).reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
-  function diffBadge(curV, prevV) {
-    if (!prevV) return '';
-    var pct = Math.round((curV - prevV) / prevV * 100);
-    var arrow = pct > 0 ? '▲' : pct < 0 ? '▼' : '—';
-    var color = pct > 0 ? 'var(--red)' : pct < 0 ? 'var(--green)' : 'var(--t3)';
-    return '<span style="font-size:11px;color:' + color + ';margin-left:6px;font-weight:700">' + arrow + ' ' + Math.abs(pct) + '%</span>';
+
+  // Determine how many months to include
+  var months = reportPeriod === 'año' ? 12 : reportPeriod === '3m' ? 3 : 1;
+  var label  = reportPeriod === 'año' ? 'Últimos 12 meses' : reportPeriod === '3m' ? 'Últimos 3 meses' : null;
+
+  if (months === 1) {
+    // Single month comparison (original behavior)
+    var prev = cur === 0 ? 11 : cur - 1, prevY = cur === 0 ? curY - 1 : curY;
+    var curI  = DATA.ingresos.filter(function(x){ return x.month===cur  && x.year===curY;  }).reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
+    var curG  = DATA.gastos.filter(function(x){ return x.month===cur  && x.year===curY;  }).reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
+    var prevI = DATA.ingresos.filter(function(x){ return x.month===prev && x.year===prevY; }).reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
+    var prevG = DATA.gastos.filter(function(x){ return x.month===prev && x.year===prevY; }).reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
+    function diffBadge(curV, prevV) {
+      if (!prevV) return '';
+      var pct = Math.round((curV - prevV) / prevV * 100);
+      var arrow = pct > 0 ? '▲' : pct < 0 ? '▼' : '—';
+      var color = pct > 0 ? 'var(--red)' : pct < 0 ? 'var(--green)' : 'var(--t3)';
+      return '<span style="font-size:11px;color:' + color + ';margin-left:6px;font-weight:700">' + arrow + ' ' + Math.abs(pct) + '%</span>';
+    }
+    el2.innerHTML = '<div class="card-title">📊 Comparación mensual</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">' +
+        '<div style="background:var(--bg3);border-radius:var(--r-sm);padding:12px;text-align:center">' +
+          '<div style="font-size:11px;color:var(--t2);margin-bottom:6px">' + MONTHS_SHORT[prev] + ' ' + prevY + '</div>' +
+          '<div style="font-size:13px;color:var(--green)">💵 ' + fmt(prevI) + '</div>' +
+          '<div style="font-size:13px;color:var(--red)">💸 ' + fmt(prevG) + '</div>' +
+        '</div>' +
+        '<div style="background:var(--gold-dim);border:1px solid rgba(201,169,110,0.25);border-radius:var(--r-sm);padding:12px;text-align:center">' +
+          '<div style="font-size:11px;color:var(--gold);font-weight:700;margin-bottom:6px">' + MONTHS_SHORT[cur] + ' ' + curY + ' (actual)</div>' +
+          '<div style="font-size:13px;color:var(--green)">💵 ' + fmt(curI) + diffBadge(curI, prevI) + '</div>' +
+          '<div style="font-size:13px;color:var(--red)">💸 ' + fmt(curG) + diffBadge(curG, prevG) + '</div>' +
+        '</div>' +
+      '</div>';
+  } else {
+    // Multi-month acumulado
+    var totalI = 0, totalG = 0;
+    for (var i = 0; i < months; i++) {
+      var mm = (cur - i + 12) % 12;
+      var yy = cur - i < 0 ? curY - 1 : curY;
+      totalI += DATA.ingresos.filter(function(x){ return x.month===mm && x.year===yy; }).reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
+      totalG += DATA.gastos.filter(function(x){ return x.month===mm && x.year===yy; }).reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
+    }
+    var net = totalI - totalG;
+    el2.innerHTML = '<div class="card-title">📊 ' + label + '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px">' +
+        '<div style="background:var(--bg3);border-radius:var(--r-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--t3);margin-bottom:4px">INGRESOS</div><div style="font-size:14px;font-weight:800;color:var(--green)">' + fmt(totalI) + '</div></div>' +
+        '<div style="background:var(--bg3);border-radius:var(--r-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--t3);margin-bottom:4px">GASTOS</div><div style="font-size:14px;font-weight:800;color:var(--red)">' + fmt(totalG) + '</div></div>' +
+        '<div style="background:var(--gold-dim);border:1px solid rgba(201,169,110,0.2);border-radius:var(--r-sm);padding:10px;text-align:center"><div style="font-size:10px;color:var(--t3);margin-bottom:4px">BALANCE</div><div style="font-size:14px;font-weight:800;color:' + (net>=0?'var(--gold)':'var(--red)') + '">' + (net>=0?'+':'') + fmt(net) + '</div></div>' +
+      '</div>';
   }
-  el2.innerHTML = '<div class="card-title">📊 Comparación mensual</div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">' +
-      '<div style="background:var(--bg3);border-radius:var(--r-sm);padding:12px;text-align:center">' +
-        '<div style="font-size:11px;color:var(--t2);margin-bottom:6px">' + MONTHS_SHORT[prev] + ' ' + prevY + '</div>' +
-        '<div style="font-size:13px;color:var(--green)">💵 ' + fmt(prevI) + '</div>' +
-        '<div style="font-size:13px;color:var(--red)">💸 ' + fmt(prevG) + '</div>' +
-      '</div>' +
-      '<div style="background:var(--gold-dim);border:1px solid rgba(201,169,110,0.25);border-radius:var(--r-sm);padding:12px;text-align:center">' +
-        '<div style="font-size:11px;color:var(--gold);font-weight:700;margin-bottom:6px">' + MONTHS_SHORT[cur] + ' ' + curY + ' (actual)</div>' +
-        '<div style="font-size:13px;color:var(--green)">💵 ' + fmt(curI) + diffBadge(curI, prevI) + '</div>' +
-        '<div style="font-size:13px;color:var(--red)">💸 ' + fmt(curG) + diffBadge(curG, prevG) + '</div>' +
-      '</div>' +
-    '</div>';
 }
 
 // ─── EXPORTAR PDF ────────────────────────────────────────────
@@ -2504,6 +2530,7 @@ function openSheet(type, id) {
   else if (type === 'categorias') html = buildCategoriasSheet();
   else if (type === 'novedades') html = buildNovedadesSheet();
   else if (type === 'cambiar-pwd') html = buildCambiarPwdSheet();
+  else if (type === 'edit-profile') html = buildEditProfileSheet();
   else if (type === 'pin-settings') html = buildPinSettingsSheet();
   else if (type === 'historial') html = buildHistorialSheet();
   else if (type === 'ia-chat') html = buildIASheet();
@@ -4143,6 +4170,47 @@ function resetPassword() {
       else authMsg('✅ Link enviado a ' + email + '. Tócalo para entrar.');
     }).catch(function(e) { authMsg('❌ ' + (e.message || 'Error')); });
 }
+function buildEditProfileSheet() {
+  var parts = (DATA.userName || '').split(' ');
+  var nombre   = parts[0] || '';
+  var apellido = parts.slice(1).join(' ') || '';
+  return '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button>' +
+    '<div class="step-title">👤 Mi perfil</div>' +
+    '<div class="step-sub">Tu nombre aparece en el saludo del inicio</div></div>' +
+    '<div style="padding:0 16px 24px">' +
+    (currentUser
+      ? '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--t2)">📧 ' + (currentUser.email || '') + '</div>'
+      : '') +
+    '<div class="form-field"><label>Nombre</label>' +
+      '<input id="ep-nombre" type="text" placeholder="Ej: Eric" value="' + nombre + '" style="font-size:16px"></div>' +
+    '<div class="form-field"><label>Apellido</label>' +
+      '<input id="ep-apellido" type="text" placeholder="Ej: Domínguez" value="' + apellido + '" style="font-size:16px"></div>' +
+    '<button class="btn-full" onclick="saveProfile()">💾 Guardar nombre</button>' +
+    '</div>';
+}
+
+async function saveProfile() {
+  var nombre   = (v('ep-nombre')   || '').trim();
+  var apellido = (v('ep-apellido') || '').trim();
+  if (!nombre) { showToast('Escribe tu nombre'); return; }
+  var fullName = nombre + (apellido ? ' ' + apellido : '');
+  DATA.userName = fullName;
+  save();
+  // Save to Supabase profiles table
+  if (currentUser && sb) {
+    try {
+      await sb.from('profiles').update({ nombre: nombre, apellido: apellido }).eq('id', currentUser.id);
+    } catch(e) {}
+  }
+  closeSheet();
+  refreshHome();
+  // Update avatar letter
+  var av = document.getElementById('profile-avatar');
+  if (av) av.textContent = fullName.charAt(0).toUpperCase();
+  el('profile-name', fullName);
+  showToast('✓ Nombre actualizado');
+}
+
 function buildCambiarPwdSheet() {
   if (!currentUser) {
     return '<div class="step-header"><div class="step-title">🔑 Contraseña</div></div>' +
@@ -4167,6 +4235,21 @@ function changeAccountPassword() {
 async function setLoggedUser(user) {
   currentUser = user; isGuestMode = false;
   localStorage.setItem('grd3_auth', 'user');
+  // Load name from profiles table
+  if (sb) {
+    try {
+      var pRes = await sb.from('profiles').select('nombre,apellido').eq('id', user.id).single();
+      if (pRes.data) {
+        var nombre = (pRes.data.nombre || '') + (pRes.data.apellido ? ' ' + pRes.data.apellido : '');
+        if (nombre.trim()) DATA.userName = nombre.trim();
+      }
+    } catch(e) {}
+  }
+  // Fallback to email prefix
+  if (!DATA.userName && user.email) {
+    var n = user.email.split('@')[0];
+    DATA.userName = n.charAt(0).toUpperCase() + n.slice(1);
+  }
   hide('auth-overlay');
   var cb = document.getElementById('auth-close-btn'); if (cb) cb.style.display = 'none';
   try { await upsertProfile(); } catch(e) {}
@@ -4208,7 +4291,23 @@ async function initSupabaseAuth() {
   try {
     var res = await sb.auth.getSession();
     var session = res && res.data ? res.data.session : null;
-    if (session && session.user) { currentUser = session.user; isGuestMode = false; }
+    if (session && session.user) {
+      currentUser = session.user; isGuestMode = false;
+      // Load name from profiles
+      if (sb) {
+        try {
+          var pRes2 = await sb.from('profiles').select('nombre,apellido').eq('id', session.user.id).single();
+          if (pRes2.data) {
+            var nombre2 = (pRes2.data.nombre || '') + (pRes2.data.apellido ? ' ' + pRes2.data.apellido : '');
+            if (nombre2.trim()) DATA.userName = nombre2.trim();
+          }
+        } catch(e) {}
+      }
+      if (!DATA.userName && session.user.email) {
+        var n2 = session.user.email.split('@')[0];
+        DATA.userName = n2.charAt(0).toUpperCase() + n2.slice(1);
+      }
+    }
     sb.auth.onAuthStateChange(async function(event, session2) {
       if (event === 'SIGNED_IN' && session2 && session2.user) {
         currentUser = session2.user; isGuestMode = false;
