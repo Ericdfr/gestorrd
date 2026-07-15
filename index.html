@@ -4319,6 +4319,9 @@ async function restoreCloudBackup() {
     if (cloud.datos) {
       DATA = Object.assign({}, DATA, cloud.datos);
       save();
+      // Refresh UI with real data after cloud restore
+      refreshHome();
+      refreshCuentas();
     }
   } catch (e) {}
 }
