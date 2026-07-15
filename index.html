@@ -889,13 +889,14 @@ canvas { max-width: 100%; display: block; }
   #desktop-sidebar {
     display: flex !important;
     flex-direction: column;
-    width: 240px;
+    width: 220px;
     min-height: 100vh;
     background: var(--surface);
     border-right: 1px solid var(--border);
     padding: 24px 0;
     position: fixed;
-    left: calc(50% - 330px);
+    /* End exactly at left edge of phone: 50% - 210px = start of phone, sidebar is 220px wide */
+    right: calc(50% + 210px);
     top: 0;
     bottom: 0;
     z-index: 100;
@@ -903,13 +904,14 @@ canvas { max-width: 100%; display: block; }
   #desktop-right {
     display: flex !important;
     flex-direction: column;
-    width: 240px;
+    width: 220px;
     min-height: 100vh;
     background: var(--surface);
     border-left: 1px solid var(--border);
     padding: 20px 16px;
     position: fixed;
-    right: calc(50% - 330px);
+    /* Start exactly at right edge of phone */
+    left: calc(50% + 210px);
     top: 0;
     bottom: 0;
     z-index: 100;
@@ -926,10 +928,6 @@ canvas { max-width: 100%; display: block; }
   }
   .dsb-nav:hover { background: var(--bg3); color: var(--t1); }
   .dsb-nav.active { background: var(--gold-dim); color: var(--gold); }
-}
-@media (min-width: 1200px) {
-  #desktop-sidebar { left: calc(50% - 450px); width: 260px; }
-  #desktop-right { right: calc(50% - 450px); width: 260px; }
 }
 @media (max-width: 899px) {
   #desktop-sidebar, #desktop-right { display: none !important; }
@@ -4634,7 +4632,7 @@ function updateDesktopSummary() {
   var tI = (DATA.ingresos||[]).filter(function(x){ return x.month===cur && x.year===curY; }).reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
   var tG = (DATA.gastos||[]).filter(function(x){ return x.month===cur && x.year===curY; }).reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
   var net = tI - tG;
-  var score = calcScore();
+  var scoreEl = document.getElementById("score-num"); var score = scoreEl ? (parseInt(scoreEl.textContent) || 58) : 58;
   var cats = {};
   (DATA.gastos||[]).filter(function(x){ return x.month===cur && x.year===curY; }).forEach(function(g){ cats[g.cat||'Otros']=(cats[g.cat||'Otros']||0)+toUSD(g.monto,g.mon); });
   var topCats = Object.keys(cats).sort(function(a,b){ return cats[b]-cats[a]; }).slice(0,3);
