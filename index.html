@@ -100,6 +100,12 @@
 [data-theme="light"] .ai-card .ai-insight { color: rgba(255,255,255,0.75); }
 [data-theme="light"] .ai-card .card-title { color: rgba(255,255,255,0.65); }
 [data-theme="light"] .ai-card .ai-chip { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.85); border-color: rgba(255,255,255,0.15); }
+/* Desktop panels in light mode use surface color which is white - text is fine */
+[data-theme="light"] #desktop-sidebar { background: #ffffff; border-right-color: rgba(0,0,0,0.08); }
+[data-theme="light"] #desktop-right { background: #ffffff; border-left-color: rgba(0,0,0,0.08); }
+[data-theme="light"] .dsb-nav { color: #555555; }
+[data-theme="light"] .dsb-nav:hover { background: #f0ede8; color: #111111; }
+[data-theme="light"] .dsb-nav.active { background: rgba(138,96,32,0.1); color: #8a6020; }
 [data-theme="light"] .navbar { background: #ffffff; box-shadow: 0 -1px 0 rgba(0,0,0,0.08); }
 [data-theme="light"] .nb { color: #888888; }
 [data-theme="light"] .nb.active { color: var(--gold); }
@@ -944,7 +950,7 @@ canvas { max-width: 100%; display: block; }
   .dsb-nav:hover { background: var(--bg3); color: var(--t1); }
   .dsb-nav.active { background: var(--gold-dim); color: var(--gold); }
 
-  /* Sheet covers only the center column */
+  /* Sheet covers only center column */
   .bottom-sheet {
     position: fixed !important;
     left: 240px !important;
@@ -4494,7 +4500,7 @@ async function saveProfile() {
   var nombre   = (v('ep-nombre')   || '').trim();
   var apellido = (v('ep-apellido') || '').trim();
   if (!nombre) { showToast('Escribe tu nombre'); return; }
-  var fullName = nombre + (apellido ? ' ' + apellido : '');
+  var fullName = [nombre, apellido].filter(Boolean).join(' ').trim();
   DATA.userName = fullName;
   save();
   // Save to Supabase profiles table
@@ -4541,7 +4547,7 @@ async function setLoggedUser(user) {
     try {
       var pRes = await sb.from('profiles').select('nombre,apellido').eq('id', user.id).single();
       if (pRes.data) {
-        var nombre = (pRes.data.nombre || '') + (pRes.data.apellido ? ' ' + pRes.data.apellido : '');
+        var nombre = [(pRes.data.nombre||'').trim(), (pRes.data.apellido||'').trim()].filter(Boolean).join(' ');
         if (nombre.trim()) DATA.userName = nombre.trim();
       }
     } catch(e) {}
@@ -4584,9 +4590,13 @@ async function restoreCloudBackup() {
     if (cloud.datos) {
       DATA = Object.assign({}, DATA, cloud.datos);
       save();
-      // Refresh UI with real data after cloud restore
+      // Refresh immediately and after a short delay to ensure DOM is ready
       refreshHome();
       refreshCuentas();
+      setTimeout(function() {
+        refreshHome();
+        if (window.innerWidth >= 900) updateDesktopSummary();
+      }, 800);
     }
   } catch (e) {}
 }
@@ -4602,7 +4612,7 @@ async function initSupabaseAuth() {
         try {
           var pRes2 = await sb.from('profiles').select('nombre,apellido').eq('id', session.user.id).single();
           if (pRes2.data) {
-            var nombre2 = (pRes2.data.nombre || '') + (pRes2.data.apellido ? ' ' + pRes2.data.apellido : '');
+            var nombre2 = [(pRes2.data.nombre||'').trim(), (pRes2.data.apellido||'').trim()].filter(Boolean).join(' ');
             if (nombre2.trim()) DATA.userName = nombre2.trim();
           }
         } catch(e) {}
