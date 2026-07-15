@@ -868,10 +868,71 @@ input, select, textarea, button { font-family: inherit; }
 .divider { height: 1px; background: var(--border); margin: 4px 0; }
 canvas { max-width: 100%; display: block; }
 
-/* Responsive desktop */
+/* ════ DESKTOP LAYOUT ════ */
 @media (min-width: 900px) {
-  .phone { max-width: 420px; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
-  body { background: #030303; }
+  html, body { overflow: auto; height: 100%; }
+  body {
+    background: var(--bg);
+    display: flex;
+    align-items: stretch;
+    min-height: 100vh;
+  }
+  .phone {
+    max-width: 420px;
+    min-width: 380px;
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    margin: 0 auto;
+    position: relative;
+    flex-shrink: 0;
+  }
+  #desktop-sidebar {
+    display: flex !important;
+    flex-direction: column;
+    width: 240px;
+    min-height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 0;
+    position: fixed;
+    left: calc(50% - 330px);
+    top: 0;
+    bottom: 0;
+    z-index: 100;
+  }
+  #desktop-right {
+    display: flex !important;
+    flex-direction: column;
+    width: 240px;
+    min-height: 100vh;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    padding: 20px 16px;
+    position: fixed;
+    right: calc(50% - 330px);
+    top: 0;
+    bottom: 0;
+    z-index: 100;
+    overflow-y: auto;
+  }
+  .navbar { display: none !important; }
+  .content { padding-bottom: 20px !important; }
+  .dsb-nav {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; padding: 10px 12px; border: none;
+    background: none; border-radius: 10px; cursor: pointer;
+    font-size: 14px; font-weight: 600; color: var(--t2);
+    text-align: left; margin-bottom: 2px; transition: background .15s;
+  }
+  .dsb-nav:hover { background: var(--bg3); color: var(--t1); }
+  .dsb-nav.active { background: var(--gold-dim); color: var(--gold); }
+}
+@media (min-width: 1200px) {
+  #desktop-sidebar { left: calc(50% - 450px); width: 260px; }
+  #desktop-right { right: calc(50% - 450px); width: 260px; }
+}
+@media (max-width: 899px) {
+  #desktop-sidebar, #desktop-right { display: none !important; }
 }
 </style>
 <script>
@@ -884,7 +945,37 @@ canvas { max-width: 100%; display: block; }
   document.head.appendChild(s);
 })();
 </script>
-</head><body><div class="phone">
+</head><body>
+
+<!-- ════ DESKTOP SIDEBAR (hidden on mobile) ════ -->
+<div id="desktop-sidebar" style="display:none">
+  <div style="padding:0 20px 24px;border-bottom:1px solid var(--border);margin-bottom:16px">
+    <div style="font-size:20px;font-weight:900;color:var(--t1)">Gestor<span style="color:var(--gold)">RD</span></div>
+    <div style="font-size:11px;color:var(--t3);margin-top:2px">Finanzas personales</div>
+  </div>
+  <nav style="padding:0 12px;flex:1">
+    <button onclick="switchTabDesktop('screen-home')" class="dsb-nav" id="dsb-home">🏠 Inicio</button>
+    <button onclick="switchTabDesktop('screen-cuentas')" class="dsb-nav" id="dsb-cuentas">💳 Cuentas</button>
+    <button onclick="switchTabDesktop('screen-reportes')" class="dsb-nav" id="dsb-reportes">📊 Reportes</button>
+    <button onclick="switchTabDesktop('screen-perfil')" class="dsb-nav" id="dsb-perfil">👤 Perfil</button>
+    <div style="height:1px;background:var(--border);margin:12px 0"></div>
+    <button onclick="openSheet('add-gasto')" class="dsb-nav" style="color:var(--red)">💸 Nuevo gasto</button>
+    <button onclick="openSheet('add-ingreso')" class="dsb-nav" style="color:var(--green)">💵 Nuevo ingreso</button>
+    <button onclick="openSheet('historial')" class="dsb-nav">📋 Historial</button>
+    <button onclick="openSheet('ia-chat')" class="dsb-nav" style="color:var(--gold)">🧠 Asesor IA</button>
+  </nav>
+  <div style="padding:12px 20px;border-top:1px solid var(--border);margin-top:auto">
+    <div id="dsb-user" style="font-size:12px;color:var(--t3)">Sin sesión</div>
+  </div>
+</div>
+
+<!-- ════ DESKTOP RIGHT PANEL (hidden on mobile) ════ -->
+<div id="desktop-right" style="display:none">
+  <div style="font-size:13px;font-weight:700;color:var(--t3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px">Resumen rápido</div>
+  <div id="dsb-summary" style="font-size:13px;color:var(--t2)">Cargando...</div>
+</div>
+
+<div class="phone">
 <!-- ════════════════════════════════════════════
      LANDING PAGE
      ════════════════════════════════════════════ -->
@@ -1463,6 +1554,12 @@ canvas { max-width: 100%; display: block; }
 
       <div class="settings-section">App</div>
       <div class="settings-card">
+        <div id="admin-btn-wrap" style="display:none">
+          <div class="settings-item" onclick="openSheet('admin')" style="background:rgba(239,68,68,0.08);border-radius:var(--r-sm);margin-bottom:1px">
+            <span class="settings-icon">🛡️</span><span class="settings-label" style="color:#ef4444;font-weight:800">Panel Admin</span>
+            <span class="settings-arrow" style="color:#ef4444">›</span>
+          </div>
+        </div>
         <div class="settings-item" onclick="showPremiumSheet()" style="background:var(--gold-dim);border-radius:var(--r-sm);margin-bottom:1px">
           <span class="settings-icon">💎</span><span class="settings-label" style="color:var(--gold);font-weight:800">GestorRD Premium</span>
           <span style="font-size:11px;font-weight:700;color:var(--gold);background:rgba(201,169,110,0.2);border-radius:20px;padding:2px 8px">Próximamente</span>
@@ -1926,6 +2023,13 @@ function sN(name) {
   if (name === 'cuentas') refreshCuentas();
   if (name === 'reportes') refreshReportes();
   if (name === 'perfil') updProfile();
+  // Sync desktop sidebar
+  if (window.innerWidth >= 900) {
+    document.querySelectorAll('.dsb-nav').forEach(function(b){ b.classList.remove('active'); });
+    var dsbBtn = document.getElementById('dsb-' + name);
+    if (dsbBtn) dsbBtn.classList.add('active');
+    updateDesktopSummary();
+  }
 }
 
 function scrollToScore() { var e=document.getElementById('score-section'); if(e) e.scrollIntoView({behavior:'smooth'}); }
@@ -2503,6 +2607,9 @@ function updProfile() {
     el('profile-name', DATA.userName || 'Mi cuenta');
     el('profile-email', currentUser.email);
     el('profile-avatar', (currentUser.email || 'G').charAt(0).toUpperCase());
+    // Show admin button only for admin
+    var adminWrap = document.getElementById('admin-btn-wrap');
+    if (adminWrap) adminWrap.style.display = currentUser.email === 'ericdfr1234@gmail.com' ? 'block' : 'none';
   } else if (isGuestMode) {
     el('profile-name', 'Invitado');
     el('profile-email', 'Sin cuenta — datos solo en este dispositivo');
@@ -2575,6 +2682,7 @@ function openSheet(type, id) {
   else if (type === 'pin-settings') html = buildPinSettingsSheet();
   else if (type === 'historial') html = buildHistorialSheet();
   else if (type === 'tour') { window._tourIdx = 0; html = buildTourSheet(); }
+  else if (type === 'admin') { html = '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button><div class="step-title">🛡️ Panel Admin</div></div><div style="padding:16px" id="admin-content"><div style="text-align:center;padding:20px;color:var(--t3)">Cargando...</div></div>'; setTimeout(buildAdminPanel, 100); }
   else if (type === 'ia-chat') html = buildIASheet();
   else if (type === 'importar') html = buildImportSheet();
   else if (type === 'edit-banco') html = buildEditBancoSheet(id);
@@ -4112,6 +4220,65 @@ function buildNovedadesSheet() {
 function showNotifs() { showToast('Sin notificaciones nuevas'); }
 function showTourOnDemand() { openSheet('tour'); }
 
+async function buildAdminPanel() {
+  var el2 = document.getElementById('admin-content');
+  if (!el2) return;
+  if (!sb || !currentUser || currentUser.email !== 'ericdfr1234@gmail.com') {
+    el2.innerHTML = '<div style="color:var(--red);text-align:center;padding:20px">Acceso denegado</div>';
+    return;
+  }
+  try {
+    // Load all profiles
+    var profRes = await sb.from('profiles').select('id,email,nombre,apellido,last_login_at,created_at,app_version,user_agent').order('last_login_at', { ascending: false });
+    var profiles = profRes.data || [];
+    // Load backup count
+    var backRes = await sb.from('app_backups').select('user_id,updated_at', { count: 'exact' });
+    var backups = backRes.data || [];
+    var backupMap = {};
+    backups.forEach(function(b){ backupMap[b.user_id] = b.updated_at; });
+
+    var totalUsers = profiles.length;
+    var activeToday = profiles.filter(function(p){
+      if (!p.last_login_at) return false;
+      var d = new Date(p.last_login_at);
+      var now = new Date();
+      return (now - d) < 86400000;
+    }).length;
+    var activeWeek = profiles.filter(function(p){
+      if (!p.last_login_at) return false;
+      return (new Date() - new Date(p.last_login_at)) < 7*86400000;
+    }).length;
+
+    var statsHTML = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">' +
+      '<div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--t3);margin-bottom:4px">TOTAL</div><div style="font-size:22px;font-weight:900;color:var(--t1)">' + totalUsers + '</div></div>' +
+      '<div style="background:var(--green-bg);border-radius:10px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--green);margin-bottom:4px">HOY</div><div style="font-size:22px;font-weight:900;color:var(--green)">' + activeToday + '</div></div>' +
+      '<div style="background:var(--blue-bg);border-radius:10px;padding:12px;text-align:center"><div style="font-size:10px;color:#60a5fa;margin-bottom:4px">7 DÍAS</div><div style="font-size:22px;font-weight:900;color:#60a5fa">' + activeWeek + '</div></div>' +
+    '</div>';
+
+    var usersHTML = profiles.map(function(p) {
+      var name = (p.nombre ? p.nombre + ' ' + (p.apellido||'') : p.email).trim();
+      var lastLogin = p.last_login_at ? new Date(p.last_login_at).toLocaleDateString('es-DO', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : 'Nunca';
+      var hasBackup = backupMap[p.id] ? '☁️' : '—';
+      var isMobile = p.user_agent && (p.user_agent.includes('iPhone') || p.user_agent.includes('Android')) ? '📱' : '💻';
+      var isMe = p.email === 'ericdfr1234@gmail.com' ? ' (tú)' : '';
+      return '<div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">' +
+        '<div style="width:36px;height:36px;border-radius:10px;background:var(--gold-dim);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:var(--gold);flex-shrink:0">' + (p.email||'?').charAt(0).toUpperCase() + '</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:13px;font-weight:700;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + name + isMe + '</div>' +
+          '<div style="font-size:11px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (p.email||'') + '</div>' +
+          '<div style="font-size:10px;color:var(--t3);margin-top:1px">' + isMobile + ' · ' + lastLogin + ' · ' + hasBackup + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    el2.innerHTML = statsHTML +
+      '<div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">Usuarios (' + totalUsers + ')</div>' +
+      usersHTML;
+  } catch(e) {
+    el2.innerHTML = '<div style="color:var(--red);padding:16px">Error: ' + e.message + '</div>';
+  }
+}
+
 function buildTourSheet() {
   var slides = [
     { icon:'💰', title:'Registra tus gastos', desc:'Toca ➕ para añadir gastos en USD o DOP. El wizard tarda menos de 10 segundos — monto, categoría, cuenta.', color:'var(--gold)' },
@@ -4429,6 +4596,71 @@ function launchApp() {
   if (sbar) sbar.style.display = '';
   initApp();
   if (!localStorage.getItem('grd3_toured')) { localStorage.setItem('grd3_toured','1'); }
+  // Init desktop sidebar
+  setTimeout(initDesktopSidebar, 300);
+}
+
+function initDesktopSidebar() {
+  if (window.innerWidth < 900) return;
+  // Update user info
+  var dsb = document.getElementById('dsb-user');
+  if (dsb) dsb.textContent = currentUser ? currentUser.email : (DATA.userName || 'Sin sesión');
+  // Set active tab
+  switchTabDesktop('screen-home');
+  // Update right panel
+  updateDesktopSummary();
+}
+
+function switchTabDesktop(screenId) {
+  // Navigate the mobile app too
+  var map = { 'screen-home': 0, 'screen-cuentas': 1, 'screen-reportes': 2, 'screen-perfil': 3 };
+  var tab = map[screenId];
+  if (tab !== undefined) {
+    var tabs = document.querySelectorAll('.nb');
+    if (tabs[tab]) tabs[tab].click();
+  }
+  // Update sidebar active state
+  var ids = { 'screen-home':'dsb-home','screen-cuentas':'dsb-cuentas','screen-reportes':'dsb-reportes','screen-perfil':'dsb-perfil' };
+  document.querySelectorAll('.dsb-nav').forEach(function(b){ b.classList.remove('active'); });
+  var activeBtn = document.getElementById(ids[screenId]);
+  if (activeBtn) activeBtn.classList.add('active');
+  updateDesktopSummary();
+}
+
+function updateDesktopSummary() {
+  var el2 = document.getElementById('dsb-summary');
+  if (!el2 || window.innerWidth < 900) return;
+  var cur = DATA.curMonth, curY = DATA.curYear;
+  var tI = (DATA.ingresos||[]).filter(function(x){ return x.month===cur && x.year===curY; }).reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
+  var tG = (DATA.gastos||[]).filter(function(x){ return x.month===cur && x.year===curY; }).reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
+  var net = tI - tG;
+  var score = calcScore();
+  var cats = {};
+  (DATA.gastos||[]).filter(function(x){ return x.month===cur && x.year===curY; }).forEach(function(g){ cats[g.cat||'Otros']=(cats[g.cat||'Otros']||0)+toUSD(g.monto,g.mon); });
+  var topCats = Object.keys(cats).sort(function(a,b){ return cats[b]-cats[a]; }).slice(0,3);
+
+  el2.innerHTML =
+    '<div style="margin-bottom:16px">' +
+      '<div style="font-size:11px;color:var(--t3);margin-bottom:4px">' + MONTHS[cur] + ' ' + curY + '</div>' +
+      '<div style="display:flex;gap:8px;margin-bottom:8px">' +
+        '<div style="flex:1;background:var(--green-bg);border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:var(--green);font-weight:700">INGRESOS</div><div style="font-size:14px;font-weight:800;color:var(--green)">' + fmt(tI) + '</div></div>' +
+        '<div style="flex:1;background:var(--red-bg);border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:var(--red);font-weight:700">GASTOS</div><div style="font-size:14px;font-weight:800;color:var(--red)">' + fmt(tG) + '</div></div>' +
+      '</div>' +
+      '<div style="background:var(--gold-dim);border:1px solid rgba(201,169,110,0.2);border-radius:8px;padding:10px;text-align:center">' +
+        '<div style="font-size:10px;color:var(--gold);font-weight:700">DISPONIBLE</div>' +
+        '<div style="font-size:18px;font-weight:900;color:var(--gold)">' + fmt(Math.max(0,net)) + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">Score</div>' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">' +
+      '<div style="font-size:28px;font-weight:900;color:var(--t1)">' + score + '</div>' +
+      '<div style="flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden"><div style="width:' + score + '%;height:100%;background:var(--green);border-radius:3px"></div></div>' +
+    '</div>' +
+    (topCats.length ? '<div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">Top gastos</div>' +
+    topCats.map(function(c){
+      var pct = tG > 0 ? Math.round(cats[c]/tG*100) : 0;
+      return '<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:var(--t2)">' + c.split(' ').slice(1).join(' ') + '</span><span style="color:var(--t1);font-weight:700">' + pct + '%</span></div><div style="height:4px;background:var(--bg3);border-radius:2px"><div style="width:' + pct + '%;height:100%;background:var(--gold);border-radius:2px"></div></div></div>';
+    }).join('') : '<div style="color:var(--t3);font-size:12px">Sin gastos este mes</div>');
 }
 
 // ─── APP INIT ─────────────────────────────────────────────
