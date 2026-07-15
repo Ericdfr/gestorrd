@@ -2401,12 +2401,12 @@ function refreshReportes() {
     }
     var maxVal = Math.max.apply(null, months.map(function(m){ return Math.max(m.ing, m.gas); })) || 1;
     chartEl.innerHTML = months.map(function(m) {
-      var ih = Math.round((m.ing / maxVal) * 70);
-      var gh = Math.round((m.gas / maxVal) * 70);
+      var ih = Math.max(m.ing > 0 ? 4 : 0, Math.round((m.ing / maxVal) * 65));
+      var gh = Math.max(m.gas > 0 ? 4 : 0, Math.round((m.gas / maxVal) * 65));
       return '<div class="bar-col">' +
-        '<div style="display:flex;gap:3px;align-items:flex-end;height:70px">' +
-          '<div class="bar-fill" style="flex:1;height:' + ih + 'px;background:var(--green);border-radius:3px 3px 0 0"></div>' +
-          '<div class="bar-fill" style="flex:1;height:' + gh + 'px;background:var(--red);border-radius:3px 3px 0 0"></div>' +
+        '<div style="display:flex;gap:3px;align-items:flex-end;height:65px">' +
+          '<div style="flex:1;height:' + ih + 'px;background:var(--green);border-radius:3px 3px 0 0;min-width:6px"></div>' +
+          '<div style="flex:1;height:' + gh + 'px;background:var(--red);border-radius:3px 3px 0 0;min-width:6px"></div>' +
         '</div>' +
         '<div class="bar-lbl">' + m.lbl + '</div>' +
       '</div>';
@@ -2419,14 +2419,19 @@ function refreshReportes() {
   curGas.forEach(function(g) { var k=g.cat||'Otros'; cats[k]=(cats[k]||0)+toUSD(g.monto,g.mon); });
   var catArr = Object.keys(cats).sort(function(a,b){ return cats[b]-cats[a]; }).slice(0, 7);
   var tG = curGas.reduce(function(a,g){ return a+toUSD(g.monto,g.mon); }, 0) || 1;
-  var catHTML = catArr.length ? catArr.map(function(cat) {
+  var catColors = ['var(--gold)','#60a5fa','#34d399','#f87171','#a78bfa','#fb923c','#e879f9'];
+  var catHTML = catArr.length ? catArr.map(function(cat, ci) {
     var pct = Math.round((cats[cat]/tG)*100);
-    return '<div style="margin-bottom:12px">' +
-      '<div style="display:flex;justify-content:space-between;margin-bottom:4px">' +
-        '<span style="font-size:13px;color:var(--t2)">' + cat + '</span>' +
-        '<span style="font-size:13px;font-weight:700;color:var(--t1)">' + fmt(cats[cat]) + ' · ' + pct + '%</span>' +
+    var color = catColors[ci % catColors.length];
+    return '<div style="margin-bottom:10px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+          '<div style="width:10px;height:10px;border-radius:50%;background:' + color + ';flex-shrink:0"></div>' +
+          '<span style="font-size:13px;color:var(--t1);font-weight:600">' + cat + '</span>' +
+        '</div>' +
+        '<span style="font-size:13px;font-weight:700;color:var(--t1)">' + fmt(cats[cat]) + ' <span style="color:var(--t3);font-weight:400">· ' + pct + '%</span></span>' +
       '</div>' +
-      '<div class="prog-wrap"><div class="prog-fill" style="width:' + pct + '%;background:var(--gold)"></div></div>' +
+      '<div class="prog-wrap"><div class="prog-fill" style="width:' + pct + '%;background:' + color + '"></div></div>' +
     '</div>';
   }).join('') : '<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-text">Sin gastos este mes</div></div>';
   elHTML('cat-breakdown', catHTML);
@@ -3648,26 +3653,57 @@ function animateCounters() {
 }
 
 // ─── HISTORIAL LIMPIO POR DÍA ──────────────────────────────
-function buildHistorialSheet() {
+function buildHistorialSheet(filterTipo, filterMes) {
   var today = new Date().toISOString().slice(0,10);
   var yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10);
-  // Merge ingresos y gastos ordenados por fecha desc
+  filterTipo = filterTipo || 'all';
+  filterMes  = filterMes  || 'all';
+
   var all = [];
-  (DATA.ingresos||[]).forEach(function(x){ all.push({ tipo:'ing', fecha:x.fecha||today, desc:x.fuente||x.desc||'Ingreso', cat:x.cat||'Ingreso', monto:x.monto, mon:x.mon, id:x.id }); });
-  (DATA.gastos||[]).forEach(function(x){ all.push({ tipo:'gas', fecha:x.fecha||today, desc:x.desc||x.cat||'Gasto', cat:x.cat||'Otros', monto:x.monto, mon:x.mon, id:x.id }); });
-  all.sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
-  if (!all.length) {
-    return '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button><div class="step-title">Historial</div></div>' +
-      '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">Sin movimientos registrados</div></div>';
+  if (filterTipo !== 'gas') (DATA.ingresos||[]).forEach(function(x){ all.push({ tipo:'ing', fecha:x.fecha||today, desc:x.fuente||x.desc||'Ingreso', cat:x.cat||'Ingreso', monto:x.monto, mon:x.mon }); });
+  if (filterTipo !== 'ing') (DATA.gastos||[]).forEach(function(x){ all.push({ tipo:'gas', fecha:x.fecha||today, desc:x.desc||x.cat||'Gasto', cat:x.cat||'Otros', monto:x.monto, mon:x.mon }); });
+
+  // Filter by month
+  if (filterMes !== 'all') {
+    all = all.filter(function(x){ return x.fecha && x.fecha.slice(0,7) === filterMes; });
   }
-  // Group by date
-  var groups = {};
-  var groupOrder = [];
+  all.sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
+
+  // Build month options from available data
+  var allDates = [];
+  (DATA.ingresos||[]).concat(DATA.gastos||[]).forEach(function(x){ if (x.fecha) allDates.push(x.fecha.slice(0,7)); });
+  var uniqueMonths = allDates.filter(function(v,i,a){ return a.indexOf(v)===i; }).sort().reverse().slice(0,6);
+  var monthOpts = '<option value="all">Todos los meses</option>' + uniqueMonths.map(function(m){
+    var yr = m.slice(0,4), mo = parseInt(m.slice(5,7))-1;
+    return '<option value="' + m + '"' + (filterMes===m?' selected':'') + '>' + MONTHS_SHORT[mo] + ' ' + yr + '</option>';
+  }).join('');
+
+  var header = '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button>' +
+    '<div class="step-title">Historial</div></div>';
+  var filters = '<div style="padding:8px 16px 12px;display:flex;gap:8px;flex-wrap:wrap">' +
+    // Type filter
+    '<div style="display:flex;gap:4px;background:var(--bg3);border-radius:20px;padding:3px">' +
+      ['all','ing','gas'].map(function(t){
+        var lbl = t==='all'?'Todo':t==='ing'?'💵 Ingresos':'💸 Gastos';
+        var active = filterTipo===t;
+        return '<button onclick="elHTML(\'sheet-content\',buildHistorialSheet(\''+t+'\',\''+filterMes+'\'))" style="padding:5px 12px;border-radius:16px;border:none;font-size:11px;font-weight:700;cursor:pointer;background:'+(active?'var(--gold-dim)':'transparent')+';color:'+(active?'var(--gold)':'var(--t3)')+'">'+lbl+'</button>';
+      }).join('') +
+    '</div>' +
+    // Month filter
+    '<select onchange="elHTML(\'sheet-content\',buildHistorialSheet(\''+filterTipo+'\',this.value))" style="padding:6px 10px;border-radius:16px;border:1px solid var(--border);background:var(--surface);color:var(--t1);font-size:12px;font-weight:600">' + monthOpts + '</select>' +
+  '</div>';
+
+  if (!all.length) {
+    return header + filters + '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">Sin movimientos</div></div>';
+  }
+
+  var groups = {}, groupOrder = [];
   all.forEach(function(x) {
     if (!groups[x.fecha]) { groups[x.fecha] = []; groupOrder.push(x.fecha); }
     groups[x.fecha].push(x);
   });
-  var html = '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button><div class="step-title">Historial</div></div><div style="padding:0 16px 80px">';
+
+  var html = header + filters + '<div style="padding:0 16px 80px">';
   groupOrder.forEach(function(fecha) {
     var label = fecha === today ? 'Hoy' : fecha === yesterday ? 'Ayer' : fecha.slice(8,10) + '/' + fecha.slice(5,7) + '/' + fecha.slice(0,4);
     var dayTotal = groups[fecha].reduce(function(a,x){ return a + (x.tipo==='gas'?-1:1)*toUSD(x.monto,x.mon); }, 0);
