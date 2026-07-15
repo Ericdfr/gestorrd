@@ -3825,8 +3825,10 @@ function animateCounters() {
     var curGas  = (DATA.gastos  || []).filter(function(x){ return x.month===cur && x.year===curY; });
     var tI = curIngs.reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
     var tG = curGas.reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
-    var tB = DATA.bancos.reduce(function(a,b){ return a+toUSD(b.bal||0,b.mon); }, 0);
-    animateCounter('bal-amount', tB, '$');
+    var tBan = DATA.bancos.filter(function(b){ return !b.esTarjeta; }).reduce(function(a,b){ return a+toUSD(b.bal||0,b.mon); }, 0);
+    var hasActivity = tI > 0 || tG > 0;
+    var displayVal = (!hasActivity && tBan > 0) ? tBan : Math.max(0, tI - tG);
+    animateCounter('bal-amount', displayVal, '$');
     animateCounter('sum-ingresos', tI, '$');
     animateCounter('sum-gastos', tG, '$');
     animateCounter('sum-ahorro', Math.max(0, tI - tG), '$');
