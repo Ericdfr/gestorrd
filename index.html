@@ -85,10 +85,21 @@
 }
 [data-theme="light"] .balance-card { background: linear-gradient(145deg,#1a1a2e 0%,#16213e 100%); }
 [data-theme="light"] .score-card { background: #1a1a2e; }
+[data-theme="light"] .score-card .score-number { color: #ffffff; }
+[data-theme="light"] .score-card .score-factor-name { color: rgba(255,255,255,0.65); }
+[data-theme="light"] .score-card .score-factor-pts { color: rgba(255,255,255,0.95); }
+[data-theme="light"] .score-card .card-title { color: rgba(255,255,255,0.65); }
+[data-theme="light"] .score-card .score-header { color: #ffffff; }
+[data-theme="light"] .score-card .logro-title { color: #ffffff; }
+[data-theme="light"] .score-card .logro-desc { color: rgba(255,255,255,0.5); }
+[data-theme="light"] .score-card .logro-item { border-bottom-color: rgba(255,255,255,0.1); }
 [data-theme="light"] .bank-card.gold { background: linear-gradient(145deg,#8a6020,#b8883a); }
 [data-theme="light"] .bank-card.dark { background: linear-gradient(145deg,#2d2d2d,#1a1a1a); }
 [data-theme="light"] .ai-card { background: #1a1a2e; border-color: rgba(96,165,250,0.2); }
-[data-theme="light"] .ai-card .ai-title, [data-theme="light"] .ai-card .ai-insight { color: #e2e8f0; }
+[data-theme="light"] .ai-card .ai-title { color: rgba(255,255,255,0.9); }
+[data-theme="light"] .ai-card .ai-insight { color: rgba(255,255,255,0.75); }
+[data-theme="light"] .ai-card .card-title { color: rgba(255,255,255,0.65); }
+[data-theme="light"] .ai-card .ai-chip { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.85); border-color: rgba(255,255,255,0.15); }
 [data-theme="light"] .navbar { background: #ffffff; box-shadow: 0 -1px 0 rgba(0,0,0,0.08); }
 [data-theme="light"] .nb { color: #888888; }
 [data-theme="light"] .nb.active { color: var(--gold); }
@@ -594,6 +605,14 @@ input, select, textarea, button { font-family: inherit; }
 .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .legend-name { font-size: 12px; color: var(--t2); flex: 1; }
 .legend-val { font-size: 12px; font-weight: 700; color: var(--t1); }
+/* Balance card always has dark bg — keep legend readable */
+.balance-card .legend-name { color: rgba(255,255,255,0.65); }
+.balance-card .legend-val { color: rgba(255,255,255,0.95); }
+.balance-card .balance-label { color: rgba(255,255,255,0.65); }
+.balance-card .balance-change { color: rgba(255,255,255,0.8); }
+.balance-card .balance-amount { color: #ffffff; }
+.balance-card .donut-pct { color: #ffffff; }
+.balance-card .donut-sub { color: rgba(255,255,255,0.65); }
 
 /* Upcoming payments */
 .payment-item {
@@ -879,7 +898,7 @@ canvas { max-width: 100%; display: block; }
     <p class="land-sub">La única app que entiende tanto RD como USA. Registra, analiza y toma mejores decisiones con tu dinero.</p>
     <div class="land-cta-row">
       <button class="land-cta-primary" onclick="startApp()">Comenzar gratis →</button>
-      <button class="land-cta-sec" onclick="startApp()">Ya tengo cuenta</button>
+      <button class="land-cta-sec" onclick="show('auth-overlay')">Ya tengo cuenta</button>
     </div>
     <!-- Real dashboard preview (SVG) -->
     <div class="land-mockup" style="background:var(--surface);border-radius:24px;overflow:hidden;padding:0;border:1px solid var(--border2)">
@@ -1082,18 +1101,35 @@ canvas { max-width: 100%; display: block; }
   <div class="auth-card" style="position:relative">
     <button id="auth-close-btn" onclick="document.getElementById('auth-overlay').style.display='none'" style="display:none;position:absolute;top:14px;right:14px;background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer;line-height:1">✕</button>
     <div class="auth-logo">Gestor<span>RD</span></div>
-    <div class="auth-sub">Inicia sesión para respaldo automático en la nube. Sin cuenta, tus datos viven solo en este dispositivo.</div>
+    <div class="auth-sub">Tu dinero, bajo control.</div>
+
+    <!-- Tabs -->
     <div class="auth-tabs">
       <button class="auth-tab active" id="auth-login-tab" onclick="setAuthMode('login')">Entrar</button>
       <button class="auth-tab" id="auth-register-tab" onclick="setAuthMode('register')">Crear cuenta</button>
     </div>
+
+    <!-- Email/pass fields -->
     <div class="fld"><label>Email</label><input type="email" id="auth-email" placeholder="tu@email.com" autocomplete="email"></div>
-    <div class="fld"><label>Contraseña</label><input type="password" id="auth-pass" placeholder="••••••••" autocomplete="current-password"></div>
+    <div class="fld"><label>Contraseña</label><input type="password" id="auth-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')authSubmit()"></div>
     <button class="btn-primary" id="auth-main-btn" onclick="authSubmit()">Iniciar sesión</button>
-    <button class="btn-ghost" onclick="authGuest()">Entrar sin cuenta</button>
-    <button class="btn-ghost" onclick="resetPassword()" style="margin-top:6px">Olvidé mi contraseña</button>
-    <div class="auth-warn">⚠️ Sin cuenta: si borras la app o cambias de dispositivo, puedes perder tus datos.</div>
+
+    <!-- Divider -->
+    <div style="display:flex;align-items:center;gap:10px;margin:14px 0">
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+      <span style="font-size:11px;color:var(--t3);font-weight:600">O</span>
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+    </div>
+
+    <!-- Skip button - prominent -->
+    <button onclick="authGuest()" style="width:100%;padding:14px;background:var(--surface);border:1.5px solid var(--border2);border-radius:var(--r-md);color:var(--t1);font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">
+      Continuar sin cuenta →
+    </button>
+
+    <button onclick="resetPassword()" style="background:none;border:none;color:var(--t3);font-size:12px;cursor:pointer;width:100%;padding:4px">Olvidé mi contraseña</button>
+
     <div class="auth-msg" id="auth-msg"></div>
+    <div style="font-size:11px;color:var(--t3);text-align:center;margin-top:10px;line-height:1.5">Sin cuenta, tus datos se guardan solo en este dispositivo.</div>
   </div>
 </div>
 
@@ -2538,6 +2574,7 @@ function openSheet(type, id) {
   else if (type === 'edit-profile') html = buildEditProfileSheet();
   else if (type === 'pin-settings') html = buildPinSettingsSheet();
   else if (type === 'historial') html = buildHistorialSheet();
+  else if (type === 'tour') { window._tourIdx = 0; html = buildTourSheet(); }
   else if (type === 'ia-chat') html = buildIASheet();
   else if (type === 'importar') html = buildImportSheet();
   else if (type === 'edit-banco') html = buildEditBancoSheet(id);
@@ -4073,7 +4110,36 @@ function buildNovedadesSheet() {
 
 // ─── SETTINGS HANDLERS ────────────────────────────────────
 function showNotifs() { showToast('Sin notificaciones nuevas'); }
-function showTourOnDemand() { showToast('Tour: usa el botón ➕ para registrar transacciones'); }
+function showTourOnDemand() { openSheet('tour'); }
+
+function buildTourSheet() {
+  var slides = [
+    { icon:'💰', title:'Registra tus gastos', desc:'Toca ➕ para añadir gastos en USD o DOP. El wizard tarda menos de 10 segundos — monto, categoría, cuenta.', color:'var(--gold)' },
+    { icon:'🧠', title:'Centro de Inteligencia', desc:'La IA analiza tus finanzas y responde preguntas como "¿Dónde gasté más?" o "¿Cuánto puedo ahorrar?".', color:'#60a5fa' },
+    { icon:'💳', title:'Tarjetas RD y USA', desc:'Registra tus tarjetas de crédito con límite en USD y DOP. Cada gasto actualiza tu saldo automáticamente.', color:'#f87171' },
+    { icon:'⭐', title:'Score Financiero', desc:'Tu puntuación del 0-100 mide ahorro, gastos, deudas y más. Mejora tus hábitos para subir el score.', color:'var(--green)' },
+    { icon:'📊', title:'Reportes detallados', desc:'Ve comparaciones mensuales, gastos por categoría y tu historial filtrado por mes o tipo.', color:'#a78bfa' },
+    { icon:'🌎', title:'Dos países, una app', desc:'Cambia entre Solo RD, Solo USA o USA+RD desde Perfil → Región según donde vivas o trabajes.', color:'var(--gold)' }
+  ];
+  var _tourIdx = window._tourIdx || 0;
+  var s = slides[_tourIdx];
+  var dots = slides.map(function(_,i){
+    return '<div style="width:' + (i===_tourIdx?'20':'8') + 'px;height:8px;border-radius:4px;background:' + (i===_tourIdx?'var(--gold)':'var(--border2)') + ';transition:all .3s"></div>';
+  }).join('');
+  var isLast = _tourIdx === slides.length - 1;
+  return '<div style="padding:32px 24px 28px;text-align:center">' +
+    '<div style="width:72px;height:72px;border-radius:20px;background:' + s.color + '22;display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 20px">' + s.icon + '</div>' +
+    '<div style="font-size:20px;font-weight:800;color:var(--t1);margin-bottom:10px">' + s.title + '</div>' +
+    '<div style="font-size:14px;color:var(--t2);line-height:1.6;margin-bottom:28px">' + s.desc + '</div>' +
+    '<div style="display:flex;justify-content:center;gap:6px;margin-bottom:28px">' + dots + '</div>' +
+    (isLast
+      ? '<button class="btn-full" onclick="window._tourIdx=0;closeSheet();showToast(\'¡Listo! Empieza con ➕\')">¡Empezar! 🚀</button>'
+      : '<button class="btn-full" onclick="window._tourIdx=' + (_tourIdx+1) + ';elHTML(\'sheet-content\',buildTourSheet())">Siguiente →</button>') +
+    (_tourIdx > 0
+      ? '<button onclick="window._tourIdx=' + (_tourIdx-1) + ';elHTML(\'sheet-content\',buildTourSheet())" style="background:none;border:none;color:var(--t3);font-size:13px;cursor:pointer;margin-top:10px;width:100%">← Anterior</button>'
+      : '<button onclick="window._tourIdx=0;closeSheet()" style="background:none;border:none;color:var(--t3);font-size:13px;cursor:pointer;margin-top:10px;width:100%">Saltar tour</button>') +
+  '</div>';
+}
 
 // ─── LANDING / SPLASH / PIN / AUTH ────────────────────────
 function startApp() {
