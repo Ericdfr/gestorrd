@@ -875,7 +875,7 @@ input, select, textarea, button { font-family: inherit; }
 canvas { max-width: 100%; display: block; }
 
 /* ════ DESKTOP LAYOUT FULL SCREEN ════ */
-@media (min-width: 900px) {
+@media (min-width: 768px) {
   html, body { overflow: hidden; height: 100%; }
   body { background: var(--bg); display: block; }
 
@@ -889,12 +889,11 @@ canvas { max-width: 100%; display: block; }
   }
 
   #app {
-    margin-left: 240px !important;
-    margin-right: 300px !important;
-    width: calc(100% - 540px) !important;
+    margin-left: 200px !important;
+    margin-right: 0 !important;
+    width: calc(100% - 200px) !important;
     max-width: none !important;
     border-left: 1px solid var(--border);
-    border-right: 1px solid var(--border);
   }
 
   .content {
@@ -916,7 +915,7 @@ canvas { max-width: 100%; display: block; }
   #desktop-sidebar {
     display: flex !important;
     flex-direction: column;
-    width: 240px;
+    width: 200px;
     height: 100vh;
     background: var(--surface);
     border-right: 1px solid var(--border);
@@ -926,19 +925,8 @@ canvas { max-width: 100%; display: block; }
     overflow-y: auto;
   }
 
-  #desktop-right {
-    display: flex !important;
-    flex-direction: column;
-    width: 300px;
-    height: 100vh;
-    background: var(--surface);
-    border-left: 1px solid var(--border);
-    padding: 20px 16px;
-    position: fixed;
-    right: 0; top: 0; bottom: 0;
-    z-index: 100;
-    overflow-y: auto;
-  }
+  /* Right panel hidden on iPad, shown on larger screens */
+  #desktop-right { display: none !important; }
 
   .dsb-nav {
     display: flex; align-items: center; gap: 12px;
@@ -950,11 +938,11 @@ canvas { max-width: 100%; display: block; }
   .dsb-nav:hover { background: var(--bg3); color: var(--t1); }
   .dsb-nav.active { background: var(--gold-dim); color: var(--gold); }
 
-  /* Sheet covers only center column */
+  /* Sheet covers full content area */
   .bottom-sheet {
     position: fixed !important;
-    left: 240px !important;
-    right: 300px !important;
+    left: 200px !important;
+    right: 0 !important;
     width: auto !important;
     max-width: none !important;
     transform: none !important;
@@ -964,11 +952,36 @@ canvas { max-width: 100%; display: block; }
     to   { transform: translateY(0); }
   }
   #sheet-overlay {
-    left: 240px !important;
-    right: 300px !important;
+    left: 200px !important;
+    right: 0 !important;
   }
 }
-@media (max-width: 899px) {
+
+/* Large screens (1100px+) — show right panel */
+@media (min-width: 1100px) {
+  #app {
+    margin-right: 280px !important;
+    width: calc(100% - 480px) !important;
+    border-right: 1px solid var(--border);
+  }
+  #desktop-right {
+    display: flex !important;
+    flex-direction: column;
+    width: 280px;
+    height: 100vh;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    padding: 20px 16px;
+    position: fixed;
+    right: 0; top: 0; bottom: 0;
+    z-index: 100;
+    overflow-y: auto;
+  }
+  .bottom-sheet { right: 280px !important; }
+  #sheet-overlay { right: 280px !important; }
+}
+
+@media (max-width: 767px) {
   #desktop-sidebar, #desktop-right { display: none !important; }
 }
 
@@ -1920,11 +1933,20 @@ var PREDICT = {
     var daysPassed = isCurrentMonth ? Math.max(1, now.getDate()) : daysInMonth;
     var daysLeft = isCurrentMonth ? Math.max(0, daysInMonth - daysPassed) : 0;
 
-    var dailyIncome = tI / daysPassed;
     var dailySpend  = tG / daysPassed;
-    var projectedIncome = tI + dailyIncome * daysLeft;
     var projectedSpend  = tG + dailySpend * daysLeft;
-    var projectedAvail  = (tBan > 0 ? tBan : 0) + (projectedIncome - tI) - (projectedSpend - tG);
+    var dailyIncome = tI / daysPassed;
+    var projectedIncome = tI + dailyIncome * daysLeft;
+
+    // Estimated end of month: use bank balance if no income, else income - projected spend
+    var projectedAvail;
+    if (tI > 0) {
+      projectedAvail = projectedIncome - projectedSpend;
+    } else {
+      // No income registered — use bank balance minus projected remaining spend
+      projectedAvail = tBan - (dailySpend * daysLeft);
+    }
+
     var overBudgetRisk = false;
     var totalBudgetLim = DATA.presupuesto.reduce(function(a,p){ return a+toUSD(p.lim,p.mon); }, 0);
     if (totalBudgetLim > 0 && projectedSpend > totalBudgetLim) overBudgetRisk = true;
@@ -2094,11 +2116,20 @@ function refreshHome() {
   var tBan = DATA.bancos.filter(function(b){ return !b.esTarjeta; }).reduce(function(a,b){ return a+toUSD(b.bal||0,b.mon); }, 0);
   var tPG = prevGas.reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
 
-  // Balance — "Disponible este mes" = ingresos - gastos del mes actual
+  // Balance — "Disponible este mes"
   var avail = tI - tG;
-  var hasMonthActivity = tI > 0 || tG > 0;
-  // Show bank balance only if no activity recorded at all this month
-  var availDisplay = (!hasMonthActivity && tBan > 0) ? tBan : Math.max(0, avail);
+  var hasIncome = tI > 0;
+  var hasGastos = tG > 0;
+  var availDisplay;
+  if (hasIncome) {
+    // Has income: show income - expenses
+    availDisplay = Math.max(0, avail);
+  } else if (tBan > 0) {
+    // No income but has bank balance: show bank balance (already reflects deducted expenses)
+    availDisplay = tBan;
+  } else {
+    availDisplay = 0;
+  }
 
   // Split balance: USA accounts (USD) vs RD accounts
   var bancos = DATA.bancos || [];
@@ -3826,8 +3857,7 @@ function animateCounters() {
     var tI = curIngs.reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
     var tG = curGas.reduce(function(a,x){ return a+toUSD(x.monto,x.mon); }, 0);
     var tBan = DATA.bancos.filter(function(b){ return !b.esTarjeta; }).reduce(function(a,b){ return a+toUSD(b.bal||0,b.mon); }, 0);
-    var hasActivity = tI > 0 || tG > 0;
-    var displayVal = (!hasActivity && tBan > 0) ? tBan : Math.max(0, tI - tG);
+    var displayVal = tI > 0 ? Math.max(0, tI - tG) : (tBan > 0 ? tBan : 0);
     animateCounter('bal-amount', displayVal, '$');
     animateCounter('sum-ingresos', tI, '$');
     animateCounter('sum-gastos', tG, '$');
