@@ -269,7 +269,14 @@
       <button class="auth-tab" id="auth-register-tab" onclick="setAuthMode('register')">Crear cuenta</button>
     </div>
 
-    
+    <!-- Name fields - only shown on register -->
+    <div id="auth-name-fields" style="display:none">
+      <div style="display:flex;gap:8px">
+        <div class="fld" style="flex:1"><label>Nombre</label><input type="text" id="auth-nombre" placeholder="Eric" autocomplete="given-name"></div>
+        <div class="fld" style="flex:1"><label>Apellido</label><input type="text" id="auth-apellido" placeholder="Fermin" autocomplete="family-name"></div>
+      </div>
+    </div>
+
     <div class="fld"><label>Email</label><input type="email" id="auth-email" placeholder="tu@email.com" autocomplete="email"></div>
     <div class="fld"><label>Contraseña</label><input type="password" id="auth-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')authSubmit()"></div>
     <button class="btn-primary" id="auth-main-btn" onclick="authSubmit()">Iniciar sesión</button>
@@ -3424,7 +3431,14 @@ var authMode = 'login';
 function setAuthMode(m) {
 authMode = m;
 cls('auth-login-tab','active',m==='login'); cls('auth-register-tab','active',m==='register');
-el('auth-main-btn', m==='login'?'Iniciar sesión':'Crear cuenta');
+el('auth-main-btn', m==='login'?'Iniciar sesión':'Crear cuenta →');
+// Show name fields only on register
+var nameFields = document.getElementById('auth-name-fields');
+if (nameFields) nameFields.style.display = m==='register' ? 'block' : 'none';
+// Update password placeholder
+var passEl = document.getElementById('auth-pass');
+if (passEl) passEl.placeholder = m==='register' ? 'Mínimo 6 caracteres' : '••••••••';
+authMsg('');
 }
 function authMsg(m) { el('auth-msg', m || ''); }
 async function authSubmit() {
@@ -3437,10 +3451,32 @@ try {
 var out = authMode === 'register'
 ? await sb.auth.signUp({ email: email, password: pass })
 : await sb.auth.signInWithPassword({ email: email, password: pass });
-if (out.error) { authMsg(out.error.message); return; }
-if (out.data && out.data.user) { await setLoggedUser(out.data.user); }
-else authMsg('Revisa tu correo para confirmar la cuenta.');
-} catch (e) { authMsg(e.message); }
+if (out.error) { authMsg('❌ ' + out.error.message); return; }
+if (out.data && out.data.user) {
+  // On register, save nombre + apellido
+  if (authMode === 'register') {
+    var nombre = (v('auth-nombre')||'').trim();
+    var apellido = (v('auth-apellido')||'').trim();
+    if (nombre) {
+      DATA.userName = [nombre, apellido].filter(Boolean).join(' ');
+      // Save to profiles table
+      try {
+        await sb.from('profiles').upsert({
+          id: out.data.user.id,
+          email: email,
+          nombre: nombre,
+          apellido: apellido || null,
+          last_login_at: new Date().toISOString(),
+          app_version: '1.0'
+        }, { onConflict: 'id' });
+      } catch(e) {}
+    }
+  }
+  await setLoggedUser(out.data.user);
+} else {
+  authMsg('✅ Revisa tu correo para confirmar la cuenta.');
+}
+} catch (e) { authMsg('❌ ' + e.message); }
 }
 function authGuest() {
 currentUser = null; isGuestMode = true;
