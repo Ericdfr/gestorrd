@@ -548,6 +548,7 @@
       <div class="settings-section">Cuenta</div>
       <div class="settings-card">
         <div id="profile-login-row"></div>
+        <div id="profile-delete-row"></div>
         <div class="settings-item" onclick="openSheet('cambiar-pwd')">
           <span class="settings-icon">🔑</span><span class="settings-label">Contraseña</span>
           <span class="settings-arrow">›</span>
@@ -1389,41 +1390,121 @@ var k = g.cat || 'Otros'; cats[k] = (cats[k] || 0) + toUSD(g.monto, g.mon);
 var cl = Object.keys(cats).sort(function(a,b){ return cats[b]-cats[a]; }).slice(0, 8);
 function f(n) { return '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 var net = ing - gas;
-var rows = '';
-meses.forEach(function(ms) {
-rows += '<tr><td><b>' + ms.m + ' ' + yr + '</b></td><td style="color:#16a34a">' + f(ms.ing) + '</td><td style="color:#dc2626">' + f(ms.gas) + '</td><td style="color:' + (ms.net>=0?'#16a34a':'#dc2626') + '">' + (ms.net>=0?'+':'') + f(ms.net) + '</td></tr>';
-});
-var cr = '';
-cl.forEach(function(c) {
-var p = gas > 0 ? Math.round(cats[c]/gas*100) : 0;
-cr += '<tr><td>' + c + '</td><td style="color:#dc2626">' + f(cats[c]) + '</td><td>' + p + '%</td></tr>';
-});
-var s = '<html><head><meta charset="UTF-8"><title>GestorRD ' + yr + '</title>' +
-'<style>body{font-family:-apple-system,sans-serif;padding:24px;color:#111;max-width:650px;margin:0 auto}' +
-'.h{display:flex;justify-content:space-between;border-bottom:3px solid #c9a96e;padding-bottom:12px;margin-bottom:18px}' +
-'.logo{font-size:20px;font-weight:900;color:#a07840}.logo b{color:#16a34a}' +
-'.c{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}' +
-'.card{border-radius:8px;padding:12px;text-align:center}' +
-'.g{background:#f0faf4;border:1px solid #bbf7d0}.r{background:#fff5f5;border:1px solid #fecaca}.b{background:#fdf6ec;border:1px solid #f0d9b5}' +
-'.l{font-size:10px;font-weight:700;color:#888;margin-bottom:4px;text-transform:uppercase}' +
-'.v{font-size:17px;font-weight:900}.g .v{color:#16a34a}.r .v{color:#dc2626}.b .v{color:#a07840}' +
-'h2{font-size:11px;font-weight:800;color:#a07840;margin:16px 0 8px;text-transform:uppercase;border-bottom:1px solid #eee;padding-bottom:5px}' +
-'table{width:100%;border-collapse:collapse;font-size:12px}th{background:#f8f9fa;padding:6px 8px;text-align:left;font-size:10px;color:#888;font-weight:700}' +
-'td{padding:6px 8px;border-bottom:1px solid #f5f5f5}' +
-'.ft{margin-top:20px;padding-top:10px;border-top:1px solid #eee;font-size:10px;color:#aaa;text-align:center}' +
-'@media print{.pb{display:none}}</style></head><body>' +
-'<div class="h"><div class="logo">Gestor<b>RD</b></div><div style="font-size:11px;color:#888;text-align:right"><b>Resumen ' + yr + '</b><br>' + new Date().toLocaleDateString('es-DO') + '</div></div>' +
-'<div class="c"><div class="card g"><div class="l">Ingresos</div><div class="v">' + f(ing) + '</div></div>' +
-'<div class="card r"><div class="l">Gastos</div><div class="v">' + f(gas) + '</div></div>' +
-'<div class="card b"><div class="l">Balance</div><div class="v" style="color:' + (net>=0?'#16a34a':'#dc2626') + '">' + (net>=0?'+':'') + f(net) + '</div></div></div>' +
-(rows ? '<h2>Detalle mensual</h2><table><thead><tr><th>Mes</th><th>Ingresos</th><th>Gastos</th><th>Balance</th></tr></thead><tbody>' + rows + '</tbody></table>' : '') +
-(cr ? '<h2>Top categorías</h2><table><thead><tr><th>Categoría</th><th>Monto</th><th>%</th></tr></thead><tbody>' + cr + '</tbody></table>' : '') +
-'<div class="ft">GestorRD · gestorrd.com</div>' +
-'<div class="pb" style="text-align:center;margin-top:16px"><button onclick="window.print()" style="background:#a07840;color:white;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">Guardar como PDF</button></div>' +
-'</body></html>';
-var w = window.open('', '_blank');
-if (w) { w.document.write(s); w.document.close(); setTimeout(function(){ try { w.print(); } catch(e) {} }, 500); }
-else { showToast('Permite ventanas emergentes para exportar PDF'); }
+
+// Load jsPDF and generate real PDF
+showToast('Generando PDF...');
+var script = document.createElement('script');
+script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+script.onload = function() {
+  try {
+    var doc = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    var W = 210, margin = 20, y = 20;
+
+    // Header
+    doc.setFillColor(10, 10, 10);
+    doc.rect(0, 0, W, 30, 'F');
+    doc.setFontSize(20); doc.setFont('helvetica','bold');
+    doc.setTextColor(201, 169, 110);
+    doc.text('GestorRD', margin, 18);
+    doc.setFontSize(10); doc.setFont('helvetica','normal');
+    doc.setTextColor(200, 200, 200);
+    doc.text('Resumen Financiero ' + yr, W - margin, 18, { align: 'right' });
+    doc.text(new Date().toLocaleDateString('es-DO'), W - margin, 24, { align: 'right' });
+    y = 45;
+
+    // Summary cards
+    var cardW = 52, cardH = 22, gap = 7, startX = margin;
+    // Ingresos
+    doc.setFillColor(240, 250, 244); doc.roundedRect(startX, y, cardW, cardH, 3, 3, 'F');
+    doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(100,100,100);
+    doc.text('INGRESOS', startX + cardW/2, y + 7, { align: 'center' });
+    doc.setFontSize(13); doc.setTextColor(22, 163, 74);
+    doc.text(f(ing), startX + cardW/2, y + 17, { align: 'center' });
+    // Gastos
+    startX += cardW + gap;
+    doc.setFillColor(255, 245, 245); doc.roundedRect(startX, y, cardW, cardH, 3, 3, 'F');
+    doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(100,100,100);
+    doc.text('GASTOS', startX + cardW/2, y + 7, { align: 'center' });
+    doc.setFontSize(13); doc.setTextColor(220, 38, 38);
+    doc.text(f(gas), startX + cardW/2, y + 17, { align: 'center' });
+    // Balance
+    startX += cardW + gap;
+    doc.setFillColor(253, 246, 236); doc.roundedRect(startX, y, cardW, cardH, 3, 3, 'F');
+    doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(100,100,100);
+    doc.text('BALANCE', startX + cardW/2, y + 7, { align: 'center' });
+    doc.setFontSize(13); doc.setTextColor(net >= 0 ? 22 : 220, net >= 0 ? 163 : 38, net >= 0 ? 74 : 38);
+    doc.text((net >= 0 ? '+' : '') + f(net), startX + cardW/2, y + 17, { align: 'center' });
+    y += cardH + 12;
+
+    // Monthly detail table
+    if (meses.length > 0) {
+      doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(160, 120, 64);
+      doc.text('DETALLE MENSUAL', margin, y); y += 5;
+      doc.setLineWidth(0.3); doc.setDrawColor(240,217,181);
+      doc.line(margin, y, W - margin, y); y += 5;
+      // Table header
+      doc.setFillColor(248, 249, 250);
+      doc.rect(margin, y, W - margin*2, 7, 'F');
+      doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(100,100,100);
+      doc.text('MES', margin + 3, y + 5);
+      doc.text('INGRESOS', margin + 60, y + 5);
+      doc.text('GASTOS', margin + 100, y + 5);
+      doc.text('BALANCE', margin + 140, y + 5);
+      y += 9;
+      meses.forEach(function(ms) {
+        doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(30,30,30);
+        doc.text(ms.m + ' ' + yr, margin + 3, y);
+        doc.setTextColor(22, 163, 74); doc.text(f(ms.ing), margin + 60, y);
+        doc.setTextColor(220, 38, 38); doc.text(f(ms.gas), margin + 100, y);
+        doc.setTextColor(ms.net >= 0 ? 22 : 220, ms.net >= 0 ? 163 : 38, ms.net >= 0 ? 74 : 38);
+        doc.text((ms.net >= 0 ? '+' : '') + f(ms.net), margin + 140, y);
+        y += 7;
+        doc.setDrawColor(240,240,240); doc.setLineWidth(0.1);
+        doc.line(margin, y - 2, W - margin, y - 2);
+        if (y > 260) { doc.addPage(); y = 20; }
+      });
+      y += 5;
+    }
+
+    // Top categories
+    if (cl.length > 0) {
+      doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(160, 120, 64);
+      doc.text('TOP CATEGORÍAS', margin, y); y += 5;
+      doc.setLineWidth(0.3); doc.setDrawColor(240,217,181);
+      doc.line(margin, y, W - margin, y); y += 5;
+      doc.setFillColor(248, 249, 250);
+      doc.rect(margin, y, W - margin*2, 7, 'F');
+      doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(100,100,100);
+      doc.text('CATEGORÍA', margin + 3, y + 5);
+      doc.text('MONTO', margin + 100, y + 5);
+      doc.text('%', margin + 150, y + 5);
+      y += 9;
+      cl.forEach(function(c) {
+        var p = gas > 0 ? Math.round(cats[c]/gas*100) : 0;
+        doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(30,30,30);
+        doc.text(c.replace(/[^\x00-\x7F]/g, '').trim() || c, margin + 3, y);
+        doc.setTextColor(220, 38, 38); doc.text(f(cats[c]), margin + 100, y);
+        doc.setTextColor(100,100,100); doc.text(p + '%', margin + 150, y);
+        y += 7;
+        doc.setDrawColor(240,240,240); doc.setLineWidth(0.1);
+        doc.line(margin, y - 2, W - margin, y - 2);
+      });
+    }
+
+    // Footer
+    doc.setFontSize(8); doc.setFont('helvetica','normal');
+    doc.setTextColor(150,150,150);
+    doc.text('GestorRD · gestorrd.com · ' + new Date().toLocaleDateString('es-DO'), W/2, 285, { align: 'center' });
+
+    // Download
+    doc.save('GestorRD-' + yr + '.pdf');
+    showToast('✅ PDF descargado');
+  } catch(err) {
+    showToast('Error al generar PDF');
+  }
+};
+script.onerror = function() { showToast('Error al cargar jsPDF'); };
+document.head.appendChild(script);
 }
 function buildPinSettingsSheet() {
 var hasPin = !!localStorage.getItem('grd3_pin');
@@ -1556,9 +1637,15 @@ el('profile-avatar', 'G');
 var loginRow = document.getElementById('profile-login-row');
 if (loginRow) {
 loginRow.innerHTML = currentUser
-? '<div class="settings-item" onclick="logoutAccount()"><span class="settings-icon">🚪</span><span class="settings-label">Cerrar sesión</span><span class="settings-arrow">›</span></div>' +
-'<div class="settings-item" onclick="deleteAccount()" style="background:var(--red-bg);border-radius:var(--r-sm)"><span class="settings-icon">🗑️</span><span class="settings-label" style="color:var(--red)">Eliminar cuenta</span><span class="settings-arrow" style="color:var(--red)">›</span></div>'
+? '<div class="settings-item" onclick="logoutAccount()"><span class="settings-icon">🚪</span><span class="settings-label">Cerrar sesión</span><span class="settings-arrow">›</span></div>'
 : '<div class="settings-item" onclick="openAuthFromProfile()"><span class="settings-icon">🔐</span><span class="settings-label">Iniciar sesión / Crear cuenta</span><span class="settings-arrow">›</span></div>';
+}
+// Delete account row — always visible when logged in
+var deleteRow = document.getElementById('profile-delete-row');
+if (deleteRow) {
+  deleteRow.innerHTML = currentUser
+  ? '<div class="settings-item" onclick="deleteAccount()" style="margin-bottom:4px"><span class="settings-icon">🗑️</span><span class="settings-label" style="color:var(--red)">Eliminar cuenta</span><span class="settings-arrow" style="color:var(--red)">›</span></div>'
+  : '';
 }
 }
 function logoutAccount() {
@@ -1660,7 +1747,14 @@ else if (type === 'pin-settings') html = buildPinSettingsSheet();
 else if (type === 'historial') html = buildHistorialSheet();
 else if (type === 'tour') { window._tourIdx = 0; html = buildTourSheet(); }
 else if (type === 'admin') { html = '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button><div class="step-title">🛡️ Panel Admin</div></div><div style="padding:16px" id="admin-content"><div style="text-align:center;padding:20px;color:var(--t3)">Cargando...</div></div>'; setTimeout(buildAdminPanel, 100); }
-else if (type === 'ia-chat') html = buildIASheet();
+else if (type === 'ia-chat') {
+  // Show AI consent on first use
+  if (!localStorage.getItem('grd3_ia_consent')) {
+    html = buildIAConsentSheet();
+  } else {
+    html = buildIASheet();
+  }
+}
 else if (type === 'importar') html = buildImportSheet();
 else if (type === 'edit-banco') html = buildEditBancoSheet(id);
 else html = '<div style="padding:20px"><p style="color:var(--t2)">Próximamente.</p></div>';
@@ -2747,6 +2841,43 @@ return html;
 }
 var _iaHistory = [];
 var _iaBusy = false;
+function buildIAConsentSheet() {
+  return '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button>' +
+    '<div class="step-title">🧠 Asesor IA</div></div>' +
+    '<div style="padding:20px 20px 32px">' +
+    '<div style="text-align:center;margin-bottom:20px">' +
+      '<div style="font-size:48px;margin-bottom:12px">🧠</div>' +
+      '<div style="font-size:18px;font-weight:800;color:var(--t1);margin-bottom:8px">Asesor Financiero IA</div>' +
+      '<div style="font-size:13px;color:var(--t2);line-height:1.6">Análisis inteligente de tus finanzas personales</div>' +
+    '</div>' +
+    '<div style="background:var(--bg3);border-radius:var(--r-md);padding:16px;margin-bottom:16px">' +
+      '<div style="font-size:12px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:12px">Cómo funciona</div>' +
+      '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">' +
+        '<span style="font-size:18px">📱</span>' +
+        '<div style="font-size:13px;color:var(--t2);line-height:1.5"><strong style="color:var(--t1)">Procesamiento local</strong><br>Tus datos financieros se analizan directamente en tu dispositivo.</div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">' +
+        '<span style="font-size:18px">🔒</span>' +
+        '<div style="font-size:13px;color:var(--t2);line-height:1.5"><strong style="color:var(--t1)">Sin envío externo</strong><br>GestorRD NO envía tus datos financieros a ningún servicio de IA externo (OpenAI, Google, etc.).</div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:flex-start;gap:10px">' +
+        '<span style="font-size:18px">🛡️</span>' +
+        '<div style="font-size:13px;color:var(--t2);line-height:1.5"><strong style="color:var(--t1)">Tus datos son tuyos</strong><br>Solo se usan para generar respuestas dentro de la app. Nunca se comparten con terceros.</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="background:var(--gold-dim);border:1px solid rgba(201,169,110,0.3);border-radius:var(--r-md);padding:12px;margin-bottom:20px;font-size:12px;color:var(--t2);line-height:1.5">' +
+      '📋 Al continuar, confirmas que entiendes cómo el Asesor IA procesa tu información financiera según nuestra <button onclick="openSheet(\'privacidad\')" style="background:none;border:none;color:var(--gold);font-size:12px;cursor:pointer;padding:0;font-weight:700">Política de Privacidad</button>.' +
+    '</div>' +
+    '<button onclick="acceptIAConsent()" style="width:100%;padding:16px;background:var(--btn-bg);border:none;border-radius:var(--r-md);color:#fff;font-size:15px;font-weight:700;cursor:pointer">Entendido, usar Asesor IA</button>' +
+    '<button onclick="closeSheet()" style="width:100%;padding:12px;background:none;border:none;color:var(--t3);font-size:13px;cursor:pointer;margin-top:8px">Cancelar</button>' +
+    '</div>';
+}
+
+function acceptIAConsent() {
+  localStorage.setItem('grd3_ia_consent', '1');
+  elHTML('sheet-content', buildIASheet());
+}
+
 function buildIASheet() {
 var preguntas = [
 '¿En qué gasté más este mes?',
