@@ -272,8 +272,8 @@
     <!-- Name fields - only shown on register -->
     <div id="auth-name-fields" style="display:none">
       <div style="display:flex;gap:8px">
-        <div class="fld" style="flex:1"><label>Nombre</label><input type="text" id="auth-nombre" placeholder="Eric" autocomplete="given-name"></div>
-        <div class="fld" style="flex:1"><label>Apellido</label><input type="text" id="auth-apellido" placeholder="Fermin" autocomplete="family-name"></div>
+        <div class="fld" style="flex:1"><label>Nombre</label><input type="text" id="auth-nombre" placeholder="Tu nombre" autocomplete="given-name"></div>
+        <div class="fld" style="flex:1"><label>Apellido</label><input type="text" id="auth-apellido" placeholder="Tu apellido" autocomplete="family-name"></div>
       </div>
     </div>
 
@@ -329,7 +329,7 @@
 
       
       <div class="balance-card">
-        <div class="balance-label">Disponible este mes</div>
+        <div class="balance-label" id="balance-label-txt">Disponible este mes</div>
         <div id="bal-split" style="display:none;gap:12px;margin-bottom:6px">
           <div style="flex:1;background:rgba(255,255,255,0.08);border-radius:12px;padding:10px 12px">
             <div style="font-size:10px;color:rgba(255,255,255,0.5);font-weight:700;margin-bottom:4px">🇺🇸 CUENTA USA</div>
@@ -374,12 +374,12 @@
       
       <div class="home-mini-row">
         <div class="home-mini-card" onclick="sN('reportes')">
-          <div class="home-mini-label">Patrimonio neto</div>
+          <div class="home-mini-label" id="lbl-patrimonio">Patrimonio neto</div>
           <div class="home-mini-val" id="home-networth">$0</div>
           <div class="home-mini-sub" id="home-networth-chg">—</div>
         </div>
         <div class="home-mini-card" onclick="sN('reportes')">
-          <div class="home-mini-label">Estimado fin de mes</div>
+          <div class="home-mini-label" id="lbl-estimado">Estimado fin de mes</div>
           <div class="home-mini-val" id="home-predict">$0</div>
           <div class="home-mini-sub" id="home-predict-sub">—</div>
         </div>
@@ -389,9 +389,9 @@
       <div class="quick-access-row">
         <button class="quick-access-btn" onclick="openSheet('add-gasto')"><span class="qa-icon">💸</span>Gasto</button>
         <button class="quick-access-btn" onclick="openSheet('add-ingreso')"><span class="qa-icon">💵</span>Ingreso</button>
-        <button class="quick-access-btn" onclick="openSheet('historial')"><span class="qa-icon">📋</span>Historial</button>
+        <button class="quick-access-btn" onclick="openSheet('historial')"><span class="qa-icon">📋</span><span id="qa-historial">Historial</span></button>
         <button class="quick-access-btn" onclick="openSheet('ia-chat')"><span class="qa-icon">🧠</span>IA</button>
-        <button class="quick-access-btn" onclick="sN('reportes')"><span class="qa-icon">📈</span>Reportes</button>
+        <button class="quick-access-btn" onclick="sN('reportes')"><span class="qa-icon">📈</span><span id="qa-reportes">Reportes</span></button>
       </div>
 
       
@@ -415,7 +415,7 @@
 
       
       <div class="card" id="payments-card">
-        <div class="card-title">Próximos pagos</div>
+        <div class="card-title" id="lbl-proximos">Próximos pagos</div>
         <div id="payments-list"><div class="empty-state"><div class="empty-icon">📅</div><div class="empty-text">Sin pagos próximos</div></div></div>
       </div>
 
@@ -429,7 +429,7 @@
 
       
       <div class="card" id="logros-card" style="display:none">
-        <div class="card-title">🏆 Logros</div>
+        <div class="card-title" id="lbl-logros">🏆 Logros</div>
         <div id="logros-list"></div>
       </div>
 
@@ -510,7 +510,7 @@
 
       
       <div class="card">
-        <div class="card-title">Patrimonio</div>
+        <div class="card-title" id="lbl-patri-title">Patrimonio</div>
         <div class="patri-row">
           <div class="patri-box"><div class="patri-label">Activos</div><div class="patri-val" id="r-activos" style="color:var(--green)">$0</div></div>
           <div class="patri-box"><div class="patri-label">Pasivos</div><div class="patri-val" id="r-pasivos" style="color:var(--red)">$0</div></div>
@@ -552,45 +552,52 @@
         </div>
       </div>
 
-      <div class="settings-section">Cuenta</div>
+      <div class="settings-section" id="sec-cuenta">Cuenta</div>
       <div class="settings-card">
         <div id="profile-login-row"></div>
         <div id="profile-delete-row"></div>
         <div class="settings-item" onclick="openSheet('cambiar-pwd')">
-          <span class="settings-icon">🔑</span><span class="settings-label">Contraseña</span>
+          <span class="settings-icon">🔑</span><span class="settings-label" id="lbl-password">Contraseña</span>
           <span class="settings-arrow">›</span>
         </div>
         <div class="settings-item" onclick="openSheet('pin-settings')">
-          <span class="settings-icon">🔐</span><span class="settings-label">PIN de seguridad</span>
+          <span class="settings-icon">🔐</span><span class="settings-label" id="lbl-pin">PIN de seguridad</span>
           <span class="settings-arrow">›</span>
         </div>
         <div class="settings-item" onclick="doBackup()">
-          <span class="settings-icon">💾</span><span class="settings-label">Exportar respaldo</span>
+          <span class="settings-icon">💾</span><span class="settings-label" id="lbl-export">Exportar respaldo</span>
           <span class="settings-arrow">›</span>
         </div>
         <div class="settings-item" onclick="openSheet('importar')">
-          <span class="settings-icon">📥</span><span class="settings-label">Importar CSV</span>
+          <span class="settings-icon">📥</span><span class="settings-label" id="lbl-import">Importar CSV</span>
           <span class="settings-arrow">›</span>
         </div>
         <div class="settings-item" onclick="openSheet('ia-chat')">
-          <span class="settings-icon">🧠</span><span class="settings-label">Asesor IA</span>
+          <span class="settings-icon">🧠</span><span class="settings-label" id="lbl-ai-advisor">Asesor IA</span>
           <span class="settings-arrow">›</span>
         </div>
         <div class="settings-item" onclick="doRestore()">
-          <span class="settings-icon">📤</span><span class="settings-label">Restaurar datos</span>
+          <span class="settings-icon">📤</span><span class="settings-label" id="lbl-restore">Restaurar datos</span>
           <span class="settings-arrow">›</span>
         </div>
       </div>
 
-      <div class="settings-section">Preferencias</div>
+      <div class="settings-section" id="sec-prefs">Preferencias</div>
       <div class="settings-card">
         <div class="settings-item">
-          <span class="settings-icon">🌎</span><span class="settings-label">Región</span>
+          <span class="settings-icon">🌎</span><span class="settings-label" id="lbl-region">Región</span>
           <span class="settings-value" id="pref-region">Ambos</span>
           <span class="settings-arrow">›</span>
         </div>
         <div class="settings-item">
-          <span class="settings-icon">🎨</span><span class="settings-label">Tema</span>
+          <span class="settings-icon">🗣️</span><span class="settings-label" id="pref-lang-label">Idioma / Language</span>
+          <div style="display:flex;gap:6px;margin-left:auto">
+            <button onclick="setLangPref('es')" id="lang-es" style="background:none;border:1px solid var(--border2);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--t2);cursor:pointer">🇩🇴 ES</button>
+            <button onclick="setLangPref('en')" id="lang-en" style="background:none;border:1px solid var(--border2);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--t2);cursor:pointer">🇺🇸 EN</button>
+          </div>
+        </div>
+        <div class="settings-item">
+          <span class="settings-icon">🎨</span><span class="settings-label" id="lbl-tema">Tema</span>
           <div style="display:flex;gap:6px;margin-left:auto">
             <button onclick="setTheme('auto')" id="t-auto" style="background:none;border:1px solid var(--border2);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--t2);cursor:pointer">Auto</button>
             <button onclick="setTheme('dark')" id="t-dark" style="background:none;border:1px solid var(--border2);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--t2);cursor:pointer">🌙</button>
@@ -598,20 +605,20 @@
           </div>
         </div>
         <div class="settings-item">
-          <span class="settings-icon">🔔</span><span class="settings-label">Alertas de pago</span>
+          <span class="settings-icon">🔔</span><span class="settings-label" id="lbl-alertas">Alertas de pago</span>
           <button class="tog on" id="tog-alertas" onclick="this.classList.toggle('on')"></button>
         </div>
         <div class="settings-item">
-          <span class="settings-icon">📊</span><span class="settings-label">Alertas presupuesto</span>
+          <span class="settings-icon">📊</span><span class="settings-label" id="lbl-alertas-presup">Alertas presupuesto</span>
           <button class="tog on" id="tog-budget-alert" onclick="this.classList.toggle('on')"></button>
         </div>
         <div class="settings-item" onclick="openSheet('categorias')">
-          <span class="settings-icon">🏷️</span><span class="settings-label">Categorías personalizadas</span>
+          <span class="settings-icon">🏷️</span><span class="settings-label" id="lbl-cats">Categorías personalizadas</span>
           <span class="settings-arrow">›</span>
         </div>
       </div>
 
-      <div class="settings-section">Región</div>
+      <div class="settings-section" id="sec-region">Región</div>
       <div class="settings-card">
         <div class="settings-item" onclick="setMode('rd');updProfile()">
           <span class="settings-icon">🇩🇴</span><span class="settings-label">Solo RD</span>
@@ -627,7 +634,7 @@
         </div>
       </div>
 
-      <div class="settings-section">App</div>
+      <div class="settings-section" id="sec-app">App</div>
       <div class="settings-card">
         <div id="admin-btn-wrap" style="display:none">
           <div class="settings-item" onclick="openSheet('admin')" style="background:rgba(239,68,68,0.08);border-radius:var(--r-sm);margin-bottom:1px">
@@ -640,19 +647,19 @@
           <span style="font-size:11px;font-weight:700;color:var(--gold);background:rgba(201,169,110,0.2);border-radius:20px;padding:2px 8px">Próximamente</span>
         </div>
         <div class="settings-item" onclick="openSheet('novedades')">
-          <span class="settings-icon">🆕</span><span class="settings-label">Novedades v3.1</span>
+          <span class="settings-icon">🆕</span><span class="settings-label" id="lbl-novedades">Novedades v3.1</span>
           <span class="settings-arrow">›</span>
         </div>
         <div class="settings-item" onclick="showTourOnDemand()">
-          <span class="settings-icon">▶️</span><span class="settings-label">Ver tour</span>
+          <span class="settings-icon">▶️</span><span class="settings-label" id="lbl-tour">Ver tour</span>
           <span class="settings-arrow">›</span>
         </div>
         <div class="settings-item" onclick="openSheet('privacidad')">
-          <span class="settings-icon">🔒</span><span class="settings-label">Política de Privacidad</span>
+          <span class="settings-icon">🔒</span><span class="settings-label" id="lbl-privacy">Política de Privacidad</span>
           <span class="settings-arrow">›</span>
         </div>
         <div class="settings-item" onclick="openSheet('terminos')">
-          <span class="settings-icon">📋</span><span class="settings-label">Términos de Servicio</span>
+          <span class="settings-icon">📋</span><span class="settings-label" id="lbl-terms">Términos de Servicio</span>
           <span class="settings-arrow">›</span>
         </div>
         <div class="settings-item">
@@ -668,17 +675,17 @@
   
   <div class="navbar">
     <button class="nb active" id="nb-home" onclick="sN('home')">
-      <div class="nb-icon">🏠</div>Inicio
+      <div class="nb-icon">🏠</div><span id="nb-label-home">Inicio</span>
     </button>
     <button class="nb" id="nb-cuentas" onclick="sN('cuentas')">
-      <div class="nb-icon">💳</div>Cuentas
+      <div class="nb-icon">💳</div><span id="nb-label-cuentas">Cuentas</span>
     </button>
     <button class="nb-add" onclick="openAddMenu()" id="nb-add-btn">＋</button>
     <button class="nb" id="nb-reportes" onclick="sN('reportes')">
-      <div class="nb-icon">📈</div>Reportes
+      <div class="nb-icon">📈</div><span id="nb-label-reportes">Reportes</span>
     </button>
     <button class="nb" id="nb-perfil" onclick="sN('perfil')">
-      <div class="nb-icon">👤</div>Perfil
+      <div class="nb-icon">👤</div><span id="nb-label-perfil">Perfil</span>
     </button>
   </div>
 
@@ -1085,8 +1092,11 @@ if (balAmtEl) balAmtEl.style.display = '';
 }
 el('mnl', MONTHS[cur] + ' ' + curY);
 var h = new Date().getHours();
-var greet = h < 12 ? 'Buenos días' : h < 18 ? 'Buenas tardes' : 'Buenas noches';
+var greet = h < 12 ? t('greeting_morning') : h < 18 ? t('greeting_afternoon') : t('greeting_evening');
 el('home-greeting', greet);
+// Update balance label with current language
+var balLabelEl = document.getElementById('balance-label-txt');
+if (balLabelEl) balLabelEl.textContent = t('available');
 el('home-name', DATA.userName ? DATA.userName + ' 👋' : '👋');
 el('bal-amount', fmt(availDisplay));
 var chgPct = tPG > 0 ? ((tG - tPG) / tPG * 100) : null;
@@ -1626,6 +1636,17 @@ el('pref-region', labels[mode] || 'Ambos');
 document.querySelectorAll('.settings-check-rd,.settings-check-us,.settings-check-both').forEach(function(e){ e.style.display='none'; });
 var ck = document.querySelector('.settings-check-' + mode);
 if (ck) ck.style.display = '';
+// Update language buttons
+var curLang = DATA.lang || 'es';
+['es','en'].forEach(function(x) {
+  var btn = document.getElementById('lang-' + x);
+  if (!btn) return;
+  var active = x === curLang;
+  btn.style.background = active ? 'var(--gold-dim)' : 'none';
+  btn.style.borderColor = active ? 'var(--gold)' : 'var(--border2)';
+  btn.style.color = active ? 'var(--gold)' : 'var(--t2)';
+  btn.style.fontWeight = active ? '700' : '400';
+});
 if (currentUser) {
 el('profile-name', DATA.userName || 'Mi cuenta');
 el('profile-email', currentUser.email);
@@ -1644,14 +1665,14 @@ el('profile-avatar', 'G');
 var loginRow = document.getElementById('profile-login-row');
 if (loginRow) {
 loginRow.innerHTML = currentUser
-? '<div class="settings-item" onclick="logoutAccount()"><span class="settings-icon">🚪</span><span class="settings-label">Cerrar sesión</span><span class="settings-arrow">›</span></div>'
-: '<div class="settings-item" onclick="openAuthFromProfile()"><span class="settings-icon">🔐</span><span class="settings-label">Iniciar sesión / Crear cuenta</span><span class="settings-arrow">›</span></div>';
+? '<div class="settings-item" onclick="logoutAccount()"><span class="settings-icon">🚪</span><span class="settings-label">' + (DATA.lang==='en'?'Sign out':'Cerrar sesión') + '</span><span class="settings-arrow">›</span></div>'
+: '<div class="settings-item" onclick="openAuthFromProfile()"><span class="settings-icon">🔐</span><span class="settings-label">' + (DATA.lang==='en'?'Sign in / Create account':'Iniciar sesión / Crear cuenta') + '</span><span class="settings-arrow">›</span></div>';
 }
 // Delete account row — always visible when logged in
 var deleteRow = document.getElementById('profile-delete-row');
 if (deleteRow) {
   deleteRow.innerHTML = currentUser
-  ? '<div class="settings-item" onclick="deleteAccount()" style="margin-bottom:4px"><span class="settings-icon">🗑️</span><span class="settings-label" style="color:var(--red)">Eliminar cuenta</span><span class="settings-arrow" style="color:var(--red)">›</span></div>'
+  ? '<div class="settings-item" onclick="deleteAccount()" style="margin-bottom:4px"><span class="settings-icon">🗑️</span><span class="settings-label" style="color:var(--red)">' + (DATA.lang==='en'?'Delete account':'Eliminar cuenta') + '</span><span class="settings-arrow" style="color:var(--red)">›</span></div>'
   : '';
 }
 }
@@ -1712,14 +1733,15 @@ if (cb) cb.style.display = 'block';
 if (ao) ao.style.display = 'flex';
 }
 function openAddMenu() {
-var html = '<div class="add-menu-title">Agregar</div>' +
+var en = DATA.lang === 'en';
+var html = '<div class="add-menu-title">' + (en ? 'Add' : 'Agregar') + '</div>' +
 '<div class="add-menu-grid">' +
-makeAddBtn('🔁','Gasto fijo','Recurrente mensual',"openSheet('gastos-fijos')") +
-makeAddBtn('💳','Deuda','Tarjeta o préstamo',"openSheet('add-deuda')") +
-makeAddBtn('🎯','Meta','Objetivo de ahorro',"openSheet('add-meta')") +
-makeAddBtn('🏦','Cuenta','Banco o tarjeta',"openSheet('add-banco')") +
-makeAddBtn('📊','Presupuesto','Límite por categoría',"openSheet('add-presupuesto')") +
-makeAddBtn('📥','Importar','Subir CSV de tu banco',"openSheet('importar')") +
+makeAddBtn('🔁', en?'Fixed expense':'Gasto fijo',    en?'Monthly recurring':'Recurrente mensual', "openSheet('gastos-fijos')") +
+makeAddBtn('💳', en?'Debt':'Deuda',                  en?'Card or loan':'Tarjeta o préstamo',     "openSheet('add-deuda')") +
+makeAddBtn('🎯', en?'Goal':'Meta',                   en?'Savings goal':'Objetivo de ahorro',       "openSheet('add-meta')") +
+makeAddBtn('🏦', en?'Account':'Cuenta',              en?'Bank or card':'Banco o tarjeta',          "openSheet('add-banco')") +
+makeAddBtn('📊', en?'Budget':'Presupuesto',          en?'Category limit':'Límite por categoría',   "openSheet('add-presupuesto')") +
+makeAddBtn('📥', en?'Import':'Importar',             en?'Upload bank CSV':'Subir CSV de tu banco', "openSheet('importar')") +
 '</div><div style="height:16px"></div>';
 openSheetWith(html);
 }
@@ -3337,6 +3359,153 @@ localStorage.setItem('grd3_lang', l); DATA.lang = l;
 ['es','en'].forEach(function(x){ cls('btn-'+x,'active',x===l); });
 checkReady();
 }
+
+// ── i18n translations ──────────────────────────────────
+var T = {
+  es: {
+    greeting_morning: 'Buenos días', greeting_afternoon: 'Buenas tardes', greeting_evening: 'Buenas noches',
+    available: 'Disponible este mes', expense: 'Gasto', income: 'Ingreso', savings: 'Ahorros',
+    net_worth: 'Patrimonio neto', estimated_eom: 'Estimado fin de mes', days_left: 'días restantes',
+    history: 'Historial', reports: 'Reportes', profile: 'Perfil', accounts: 'Cuentas', home: 'Inicio',
+    new_expense: 'Nuevo gasto', new_income: 'Nuevo ingreso', save: 'Guardar', cancel: 'Cancelar',
+    amount: 'Monto', category: 'Categoría', date: 'Fecha', description: 'Descripción',
+    available_lbl: 'Disponible', expenses_lbl: 'Gastos', savings_lbl: 'Ahorros',
+    month: 'mes', financial_score: 'Score Financiero', achievements: 'Logros',
+    upcoming: 'Próximos pagos', no_upcoming: 'Sin pagos próximos',
+    ai_center: 'Centro de Inteligencia', ask_ai: 'Escribe tu pregunta...',
+    add: 'Agregar', delete_account: 'Eliminar cuenta', logout: 'Cerrar sesión',
+    privacy: 'Política de Privacidad', terms: 'Términos de Servicio',
+    language: 'Idioma', region: 'Región', theme: 'Tema',
+    free: 'libre', good: 'Bueno', excellent: 'Excelente', regular: 'Regular',
+  },
+  en: {
+    greeting_morning: 'Good morning', greeting_afternoon: 'Good afternoon', greeting_evening: 'Good evening',
+    available: 'Available this month', expense: 'Expense', income: 'Income', savings: 'Savings',
+    net_worth: 'Net worth', estimated_eom: 'Month-end estimate', days_left: 'days left',
+    history: 'History', reports: 'Reports', profile: 'Profile', accounts: 'Accounts', home: 'Home',
+    new_expense: 'New expense', new_income: 'New income', save: 'Save', cancel: 'Cancel',
+    amount: 'Amount', category: 'Category', date: 'Date', description: 'Description',
+    available_lbl: 'Available', expenses_lbl: 'Expenses', savings_lbl: 'Savings',
+    month: 'month', financial_score: 'Financial Score', achievements: 'Achievements',
+    upcoming: 'Upcoming payments', no_upcoming: 'No upcoming payments',
+    ai_center: 'Intelligence Center', ask_ai: 'Ask a question...',
+    add: 'Add', delete_account: 'Delete account', logout: 'Sign out',
+    privacy: 'Privacy Policy', terms: 'Terms of Service',
+    language: 'Language', region: 'Region', theme: 'Theme',
+    free: 'free', good: 'Good', excellent: 'Excellent', regular: 'Fair',
+  }
+};
+
+function t(key) {
+  var lang = DATA.lang || 'es';
+  return (T[lang] && T[lang][key]) || (T['es'] && T['es'][key]) || key;
+}
+
+function setLangPref(l) {
+  localStorage.setItem('grd3_lang', l);
+  DATA.lang = l;
+  save();
+  // Update active button
+  ['es','en'].forEach(function(x) {
+    var btn = document.getElementById('lang-' + x);
+    if (!btn) return;
+    var active = x === l;
+    btn.style.background = active ? 'var(--gold-dim)' : 'none';
+    btn.style.borderColor = active ? 'var(--gold)' : 'var(--border2)';
+    btn.style.color = active ? 'var(--gold)' : 'var(--t2)';
+    btn.style.fontWeight = active ? '700' : '400';
+  });
+  // Update key UI strings
+  applyLang(l);
+  showToast(l === 'en' ? '🇺🇸 English selected' : '🇩🇴 Español seleccionado');
+}
+
+function applyLang(l) {
+  DATA.lang = l;
+  document.documentElement.lang = l;
+
+  var en = l === 'en';
+
+  // ── Static DOM elements ──────────────────────────────
+  var map = {
+    // Navbar
+    'nb-label-home':    en ? 'Home'       : 'Inicio',
+    'nb-label-cuentas': en ? 'Accounts'   : 'Cuentas',
+    'nb-label-reportes':en ? 'Reports'    : 'Reportes',
+    'nb-label-perfil':  en ? 'Profile'    : 'Perfil',
+    // Desktop sidebar
+    'dsb-home':    en ? '🏠 Home'     : '🏠 Inicio',
+    'dsb-cuentas': en ? '💳 Accounts' : '💳 Cuentas',
+    'dsb-reportes':en ? '📊 Reports'  : '📊 Reportes',
+    'dsb-perfil':  en ? '👤 Profile'  : '👤 Perfil',
+    // Home labels
+    'balance-label-txt': en ? 'Available this month' : 'Disponible este mes',
+    'lbl-patrimonio':    en ? 'Net worth'            : 'Patrimonio neto',
+    'lbl-estimado':      en ? 'Month-end estimate'   : 'Estimado fin de mes',
+    'lbl-proximos':      en ? 'Upcoming payments'    : 'Próximos pagos',
+    'lbl-logros':        en ? '🏆 Achievements'      : '🏆 Logros',
+    'lbl-patri-title':   en ? 'Net Worth'            : 'Patrimonio',
+    // Quick access
+    'qa-historial': en ? 'History'  : 'Historial',
+    'qa-reportes':  en ? 'Reports'  : 'Reportes',
+    // Settings sections
+    'sec-cuenta':  en ? 'Account'      : 'Cuenta',
+    'sec-prefs':   en ? 'Preferences'  : 'Preferencias',
+    'sec-region':  en ? 'Region'       : 'Región',
+    'sec-app':     en ? 'App'          : 'App',
+    // Settings items - Cuenta
+    'lbl-password':  en ? 'Password'        : 'Contraseña',
+    'lbl-pin':       en ? 'Security PIN'    : 'PIN de seguridad',
+    'lbl-export':    en ? 'Export backup'   : 'Exportar respaldo',
+    'lbl-import':    en ? 'Import CSV'      : 'Importar CSV',
+    'lbl-ai-advisor':en ? 'AI Advisor'      : 'Asesor IA',
+    'lbl-restore':   en ? 'Restore data'    : 'Restaurar datos',
+    // Settings items - Preferencias
+    'lbl-region':        en ? 'Region'               : 'Región',
+    'pref-lang-label':   en ? 'Language'             : 'Idioma / Language',
+    'lbl-tema':          en ? 'Theme'                : 'Tema',
+    'lbl-alertas':       en ? 'Payment alerts'       : 'Alertas de pago',
+    'lbl-alertas-presup':en ? 'Budget alerts'        : 'Alertas presupuesto',
+    'lbl-cats':          en ? 'Custom categories'    : 'Categorías personalizadas',
+    // App section
+    'lbl-novedades': en ? "What's new v3.1"   : 'Novedades v3.1',
+    'lbl-tour':      en ? 'View tour'          : 'Ver tour',
+    'lbl-privacy':   en ? 'Privacy Policy'     : 'Política de Privacidad',
+    'lbl-terms':     en ? 'Terms of Service'   : 'Términos de Servicio',
+  };
+
+  Object.keys(map).forEach(function(id) {
+    var el2 = document.getElementById(id);
+    if (el2) el2.textContent = map[id];
+  });
+
+  // ── Desktop sidebar extra buttons ────────────────────
+  var dsbExtras = document.querySelectorAll('#desktop-sidebar .dsb-nav');
+  if (dsbExtras.length > 4) {
+    if (dsbExtras[5]) dsbExtras[5].textContent = en ? '💸 New expense' : '💸 Nuevo gasto';
+    if (dsbExtras[6]) dsbExtras[6].textContent = en ? '💵 New income'  : '💵 Nuevo ingreso';
+    if (dsbExtras[7]) dsbExtras[7].textContent = en ? '📋 History'     : '📋 Historial';
+    if (dsbExtras[8]) dsbExtras[8].textContent = en ? '🧠 AI Advisor'  : '🧠 Asesor IA';
+  }
+
+  // ── Legend labels (inside balance card) ─────────────
+  var legends = document.querySelectorAll('.legend-name');
+  var legMap = en
+    ? ['Available','Expenses','Savings']
+    : ['Disponible','Gastos','Ahorros'];
+  legends.forEach(function(el2, i) { if (legMap[i]) el2.textContent = legMap[i]; });
+
+  // ── Donut center label ───────────────────────────────
+  var donutLbl = document.querySelector('.donut-lbl');
+  if (donutLbl) donutLbl.textContent = en ? 'free' : 'libre';
+
+  // ── Refresh screens to pick up t() strings ───────────
+  refreshHome();
+  if (typeof refreshCuentas === 'function') refreshCuentas();
+  if (typeof refreshReportes === 'function') refreshReportes();
+  if (typeof updProfile === 'function') updProfile();
+  if (typeof updateDesktopSummary === 'function') updateDesktopSummary();
+}
 function selMode(m) {
 localStorage.setItem('grd3_mode', m); DATA.mode = m;
 ['rd','us','both'].forEach(function(x){ cls('btn-'+x,'active',x===m); });
@@ -3508,7 +3677,7 @@ return '<div class="step-header"><button class="step-back" onclick="closeSheet()
 ? '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--t2)">📧 ' + (currentUser.email || '') + '</div>'
 : '') +
 '<div class="form-field"><label>Nombre</label>' +
-'<input id="ep-nombre" type="text" placeholder="Ej: Eric" value="' + nombre + '" style="font-size:16px"></div>' +
+'<input id="ep-nombre" type="text" placeholder="Ej: Juan" value="' + nombre + '" style="font-size:16px"></div>' +
 '<div class="form-field"><label>Apellido</label>' +
 '<input id="ep-apellido" type="text" placeholder="Ej: Domínguez" value="' + apellido + '" style="font-size:16px"></div>' +
 '<button class="btn-full" onclick="saveProfile()">💾 Guardar nombre</button>' +
@@ -3844,6 +4013,8 @@ return '<div style="margin-bottom:8px"><div style="display:flex;justify-content:
 function initApp() {
 load();
 DATA.lang = localStorage.getItem('grd3_lang') || 'es';
+// Apply lang immediately
+setTimeout(function() { applyLang(DATA.lang); }, 500);
 DATA.mode = localStorage.getItem('grd3_mode') || 'both';
 var theme = localStorage.getItem('grd3_theme') || 'auto';
 setTheme(theme);
