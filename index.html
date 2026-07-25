@@ -3496,8 +3496,11 @@ var T = {
 };
 
 function t(key) {
-  var lang = DATA.lang || 'es';
-  return (T[lang] && T[lang][key]) || (T['es'] && T['es'][key]) || key;
+  try {
+    var lang = (typeof DATA !== 'undefined' && DATA.lang) ? DATA.lang : 'es';
+    if (typeof T === 'undefined') return key;
+    return (T[lang] && T[lang][key]) || (T['es'] && T['es'][key]) || key;
+  } catch(e) { return key; }
 }
 
 function setLangPref(l) {
