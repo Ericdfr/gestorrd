@@ -564,7 +564,7 @@
         </div>
       </div>
 
-      <div class="settings-card" onclick="document.getElementById('user-menu').style.display=document.getElementById('user-menu').style.display==='none'?'block':'none'" style="cursor:pointer;margin:16px;background:var(--bg2);border-radius:var(--r-lg);padding:16px;display:flex;align-items:center;gap:14px">
+      <div class="settings-card" onclick="toggleUserMenu()" style="cursor:pointer;margin:16px;background:var(--bg2);border-radius:var(--r-lg);padding:16px;display:flex;align-items:center;gap:14px">
         <div class="profile-avatar" id="profile-avatar-config">E</div>
         <div style="flex:1">
           <div style="font-size:16px;font-weight:800;color:var(--t1)" id="profile-name-config">Usuario</div>
@@ -576,7 +576,11 @@
       <div id="user-menu" style="display:none;margin:0 16px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden">
         <div style="padding:12px;border-bottom:1px solid var(--border)">
           <label style="font-size:11px;color:var(--t3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:6px">Nombre</label>
-          <input type="text" placeholder="Tu nombre" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--t1);font-size:13px">
+          <input id="user-name-input" type="text" placeholder="Tu nombre" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--t1);font-size:13px">
+        </div>
+        <div style="padding:12px;border-bottom:1px solid var(--border)">
+          <label style="font-size:11px;color:var(--t3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:6px">Apellido</label>
+          <input id="user-last-input" type="text" placeholder="Tu apellido" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--t1);font-size:13px">
         </div>
         <div style="padding:12px;border-bottom:1px solid var(--border)">
           <label style="font-size:11px;color:var(--t3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:6px">País</label>
@@ -591,14 +595,14 @@
         </div>
         <div style="padding:12px;border-bottom:1px solid var(--border)">
           <label style="font-size:11px;color:var(--t3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:6px">Moneda principal</label>
-          <select style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--t1);font-size:13px">
+          <select id="user-main-currency" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--t1);font-size:13px">
             <option>RD$ (Peso Dominicano)</option>
             <option>$ (Dólar Estadounidense)</option>
           </select>
         </div>
         <div style="padding:12px">
           <label style="font-size:11px;color:var(--t3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:6px">Correo electrónico</label>
-          <input type="email" placeholder="tu@email.com" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--t1);font-size:13px">
+          <input id="user-email-input" type="email" placeholder="tu@email.com" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--t1);font-size:13px">
         </div>
       </div>
 
@@ -926,6 +930,19 @@ var savedLang = localStorage.getItem('grd3_lang') || 'es';
 if (savedLang !== 'es') {
   DATA.lang = savedLang;
   applyLang(savedLang);
+}
+}
+function toggleUserMenu() {
+var menu = document.getElementById('user-menu');
+if (menu.style.display === 'none') {
+  menu.style.display = 'block';
+  // Auto-fill fields when menu opens
+  document.getElementById('user-name-input').value = DATA.nombre || '';
+  document.getElementById('user-last-input').value = DATA.apellido || '';
+  document.getElementById('user-email-input').value = DATA.email || '';
+  document.getElementById('user-country').value = DATA.pais || 'rd';
+} else {
+  menu.style.display = 'none';
 }
 }
 var MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -1607,6 +1624,7 @@ el2.innerHTML = '<div class="card-title">📊 ' + label + '</div>' +
 }
 }
 function exportPDF() {
+if (!requireSubscription()) return;
 var yr = DATA.curYear;
 var ing = 0, gas = 0, meses = [], cats = {};
 for (var m = 0; m < 12; m++) {
@@ -3189,6 +3207,7 @@ if (inp) inp.value = q;
 sendIAMessage();
 }
 function openIAWithQuestion(q) {
+if (!requireSubscription()) return;
 openSheet('ia-chat');
 setTimeout(function() {
 var inp = document.getElementById('ia-input');
@@ -4081,6 +4100,9 @@ if (authMode === 'register') {
   localStorage.setItem('grd3_auth', email);
 
   DATA.userName = [nombre, apellido].filter(Boolean).join(' ');
+  DATA.nombre = nombre;
+  DATA.apellido = apellido;
+  DATA.email = email;
   currentUser = { email: email, id: email };
   isGuestMode = false;
 
@@ -4102,6 +4124,9 @@ if (authMode === 'register') {
 
   localStorage.setItem('grd3_auth', email);
   DATA.userName = [account.nombre, account.apellido].filter(Boolean).join(' ');
+  DATA.nombre = account.nombre;
+  DATA.apellido = account.apellido;
+  DATA.email = email;
   currentUser = { email: email, id: email };
   isGuestMode = false;
 
@@ -4588,6 +4613,7 @@ function exportAllData() {
 }
 
 function exportByDates() {
+  if (!requireSubscription()) return;
   var startDate = prompt('Fecha de inicio (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
   if (!startDate) return;
   var endDate = prompt('Fecha de fin (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
@@ -4763,6 +4789,7 @@ function exportAllData() {
 }
 
 function exportByDates() {
+  if (!requireSubscription()) return;
   var startDate = prompt('Fecha de inicio (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
   if (!startDate) return;
   var endDate = prompt('Fecha de fin (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
