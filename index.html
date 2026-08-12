@@ -890,23 +890,100 @@ DATA.premiumSince = new Date().toISOString();
 save(); showToast('🎉 ¡Bienvenido a GestorRD Premium!'); updProfile();
 }
 function showPremiumSheet() {
+var en = DATA.lang === 'en';
+var features = en ? [
+  '🧠 Unlimited AI Advisor',
+  '☁️ Automatic cloud backup',
+  '📄 Export to PDF',
+  '📊 12-month reports',
+  '💳 Unlimited accounts & cards',
+  '🌍 USD + DOP dual currency',
+  '🚫 No ads ever'
+] : [
+  '🧠 Asesor IA sin límites',
+  '☁️ Respaldo automático en la nube',
+  '📄 Exportar en PDF',
+  '📊 Reportes de 12 meses',
+  '💳 Cuentas y tarjetas ilimitadas',
+  '🌍 USD + DOP doble moneda',
+  '🚫 Sin publicidad nunca'
+];
+
 openSheetWith(
 '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button>' +
-'<div class="step-title">GestorRD Premium</div></div>' +
-'<div style="padding:0 16px 24px">' +
-'<div style="text-align:center;padding:24px 0 20px">' +
-'<div style="font-size:48px;margin-bottom:8px">💎</div>' +
-'<div style="font-size:22px;font-weight:900;color:var(--t1);margin-bottom:6px">Próximamente</div>' +
-'<div style="font-size:14px;color:var(--t2);line-height:1.6;margin-bottom:0">Estamos preparando la versión Premium.<br>Sé el primero en enterarte.</div>' +
+'<div class="step-title">💎 GestorRD Premium</div></div>' +
+'<div style="padding:0 16px 32px">' +
+// Header
+'<div style="text-align:center;padding:20px 0 24px">' +
+'<div style="font-size:56px;margin-bottom:12px">💎</div>' +
+'<div style="font-size:22px;font-weight:900;color:var(--t1);margin-bottom:6px">' + (en ? 'Unlock Premium' : 'Desbloquea Premium') + '</div>' +
+'<div style="font-size:14px;color:var(--t2);line-height:1.6">' + (en ? '5-day free trial, then choose your plan' : 'Prueba 5 días gratis, luego elige tu plan') + '</div>' +
 '</div>' +
-'<div style="display:flex;flex-direction:column;gap:10px;margin:0 0 24px">' +
-['📥 Importación ilimitada de estados de cuenta','🧠 Asesor IA sin límites','☁️ Respaldo automático en la nube','📄 Exportar en PDF y Excel','📊 Reportes de 12 meses','🌍 Múltiples monedas','🚫 Sin publicidad futura'].map(function(f){
-return '<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--t1)"><span style="color:var(--gold)">✓</span>' + f + '</div>';
+// Features list
+'<div style="background:var(--bg3);border-radius:var(--r-md);padding:16px;margin-bottom:20px">' +
+features.map(function(f) {
+  return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px;color:var(--t1)"><span style="color:var(--green);font-size:16px">✓</span>' + f + '</div>';
 }).join('') +
 '</div>' +
-'<a href="mailto:hola@gestorrd.com?subject=Quiero%20Premium" style="display:block;text-align:center;background:var(--gold-dim);border:1.5px solid var(--gold);color:var(--gold);border-radius:14px;padding:14px;font-size:15px;font-weight:700;text-decoration:none">Notificarme cuando esté disponible →</a>' +
+// Trial badge
+'<div style="background:var(--green-bg);border:1px solid var(--green-bdr);border-radius:var(--r-md);padding:12px;text-align:center;margin-bottom:16px">' +
+'<div style="font-size:13px;font-weight:700;color:var(--green)">' + (en ? '🎁 5-day FREE trial included' : '🎁 5 días de prueba GRATIS incluidos') + '</div>' +
+'<div style="font-size:11px;color:var(--t2);margin-top:2px">' + (en ? 'Cancel anytime before trial ends' : 'Cancela en cualquier momento antes de que termine') + '</div>' +
+'</div>' +
+// Monthly plan
+'<button onclick="purchaseSubscription(\'com.gestorrd.app.premium.monthly\')" style="width:100%;background:var(--g-gold);border:none;border-radius:var(--r-md);padding:16px;margin-bottom:10px;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center">' +
+'<div><div style="font-size:15px;font-weight:800;color:#fff">' + (en ? 'Monthly' : 'Mensual') + '</div>' +
+'<div style="font-size:12px;color:rgba(255,255,255,0.75)">' + (en ? 'Billed monthly' : 'Facturado mensualmente') + '</div></div>' +
+'<div style="font-size:20px;font-weight:900;color:#fff">$6.99</div>' +
+'</button>' +
+// Annual plan
+'<button onclick="purchaseSubscription(\'com.gestorrd.app.premium.yearly\')" style="width:100%;background:var(--surface);border:2px solid var(--gold);border-radius:var(--r-md);padding:16px;margin-bottom:16px;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;position:relative">' +
+'<div style="position:absolute;top:-10px;right:12px;background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px">' + (en ? 'SAVE 17%' : 'AHORRA 17%') + '</div>' +
+'<div><div style="font-size:15px;font-weight:800;color:var(--t1)">' + (en ? 'Annual' : 'Anual') + '</div>' +
+'<div style="font-size:12px;color:var(--t2)">' + (en ? '$5.83/mo · Billed annually' : '$5.83/mes · Facturado anualmente') + '</div></div>' +
+'<div style="font-size:20px;font-weight:900;color:var(--gold)">$69.99</div>' +
+'</button>' +
+// Restore
+'<button onclick="restorePurchases()" style="width:100%;background:none;border:none;color:var(--t3);font-size:12px;cursor:pointer;padding:8px">' + (en ? 'Restore purchases' : 'Restaurar compras') + '</button>' +
+'<div style="font-size:10px;color:var(--t3);text-align:center;line-height:1.5;margin-top:8px">' + (en ? 'Payment charged to Apple ID. Subscription auto-renews unless cancelled 24h before period ends.' : 'Pago cobrado al Apple ID. La suscripción se renueva automáticamente a menos que se cancele 24h antes.') + '</div>' +
 '</div>'
 );
+}
+
+async function purchaseSubscription(productId) {
+var en = DATA.lang === 'en';
+// Check if running in iOS native (Capacitor)
+if (window.webkit && window.webkit.messageHandlers) {
+  // Native iOS - use StoreKit via Capacitor
+  showToast(en ? 'Opening App Store...' : 'Abriendo App Store...');
+  try {
+    // Send message to native Swift to initiate purchase
+    window.webkit.messageHandlers.storeKit.postMessage({
+      action: 'purchase',
+      productId: productId
+    });
+  } catch(e) {
+    // Fallback - open App Store subscription management
+    window.open('https://apps.apple.com/account/subscriptions', '_blank');
+  }
+} else {
+  // Web - show message
+  showToast(en ? 'Available in the iOS app' : 'Disponible en la app de iOS');
+}
+}
+
+async function restorePurchases() {
+var en = DATA.lang === 'en';
+if (window.webkit && window.webkit.messageHandlers) {
+  try {
+    window.webkit.messageHandlers.storeKit.postMessage({ action: 'restore' });
+    showToast(en ? 'Restoring purchases...' : 'Restaurando compras...');
+  } catch(e) {
+    showToast(en ? 'No purchases found' : 'No se encontraron compras');
+  }
+} else {
+  showToast(en ? 'Available in the iOS app' : 'Disponible en la app de iOS');
+}
 }
 function save() {
 try { localStorage.setItem('grd3_data', JSON.stringify(DATA)); } catch(e) {}
