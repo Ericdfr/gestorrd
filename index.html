@@ -1203,7 +1203,7 @@ return spent <= toUSD(p.lim, p.mon);
 });
 budPts = Math.round((onBudget.length / DATA.presupuesto.length) * 15);
 }
-factors.push({ name: 'Presupuesto', pts: budPts, max: 15, emoji: '📊' });
+factors.push({ name: t('score_budget'), pts: budPts, max: 15, emoji: '📊' });
 total += budPts;
 var prev = cur === 0 ? 11 : cur - 1;
 var prevY = cur === 0 ? curY - 1 : curY;
@@ -1489,7 +1489,7 @@ amountLine = '<div class="bc-amount">' + fmt(Math.abs(b.bal||0), b.mon) + '</div
 return '<div class="bank-card ' + (cardColors[i%3]) + '" onclick="openSheet(\'edit-banco\','+b.id+')">' +
 '<div class="bc-bank">' + (b.nom || b.banco) + '</div>' +
 amountLine +
-'<div class="bc-label">' + (b.esTarjeta ? 'Debes' : 'Disponible') + '</div>' +
+'<div class="bc-label">' + (b.esTarjeta ? (DATA.lang==='en' ? 'Owed' : 'Debes') : t('available_lbl')) + '</div>' +
 '<div class="bc-bottom"><span class="bc-type">' + (b.tipo||'Cuenta') + '</span>' +
 (b.ultimos ? '<span class="bc-digits">···' + b.ultimos + '</span>' : '') +
 '</div>' +
@@ -1786,7 +1786,7 @@ el('ptitle','Crea un PIN de 4 dígitos');
 el('psub','Paso 1 de 2');
 el('perr','');
 var sk = document.getElementById('pskip');
-if (sk) { sk.style.display = 'block'; sk.textContent = 'Cancelar'; }
+if (sk) { sk.style.display = 'block'; sk.textContent = t('cancel'); }
 var ps = document.getElementById('pin-screen');
 if (ps) ps.style.display = 'flex';
 }
@@ -1923,7 +1923,7 @@ var landing = document.getElementById('landing');
 if (app) app.style.display = 'none';
 if (landing) { landing.style.display = 'flex'; }
 else { location.reload(); }
-showToast('Sesión cerrada');
+showToast(t('session_closed'));
 }
 function deleteAccount() {
 if (!currentUser) { showToast('Inicia sesión primero'); return; }
@@ -2028,7 +2028,58 @@ else if (type === 'ia-chat') {
 }
 else if (type === 'importar') html = buildImportSheet();
 else if (type === 'edit-banco') html = buildEditBancoSheet(id);
-else html = '<div style="padding:20px 20px 40px"><div style="text-align:center;padding:20px 0"><div style="font-size:36px;margin-bottom:12px">🔔</div><div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:8px">Notificaciones</div><p style="font-size:13px;color:var(--t2);line-height:1.6">Las alertas de pagos próximos y presupuestos aparecerán aquí.<br><br>Próximamente.</p></div></div>';
+else html = (function() {
+  var en = DATA.lang === 'en';
+  var notifications = [];
+  // Check upcoming fixed expenses
+  var today = new Date();
+  var todayDay = today.getDate();
+  (DATA.gastosFijos || []).forEach(function(gf) {
+    var daysUntil = gf.dia >= todayDay ? gf.dia - todayDay : (30 - todayDay + gf.dia);
+    if (daysUntil <= 7) {
+      notifications.push({
+        icon: '📅', color: daysUntil <= 2 ? 'var(--red)' : 'var(--gold)',
+        title: gf.desc || gf.cat,
+        sub: (en ? 'Due in ' : 'Vence en ') + daysUntil + (en ? ' days' : ' días') + ' · ' + (gf.mon === 'DOP' ? 'RD$' : '$') + (gf.monto || 0).toFixed(2)
+      });
+    }
+  });
+  // Check credit card payments
+  (DATA.bancos || []).filter(function(b) { return b.esTarjeta && b.pagoFecha; }).forEach(function(b) {
+    var days = (function(ds) { if (!ds) return null; var d = new Date(ds + 'T12:00:00'), n = new Date(); n.setHours(0,0,0,0); return Math.round((d-n)/86400000); })(b.pagoFecha);
+    if (days !== null && days >= 0 && days <= 10) {
+      notifications.push({
+        icon: '💳', color: days <= 3 ? 'var(--red)' : 'var(--gold)',
+        title: (b.nom || b.banco) + (en ? ' payment' : ' · Pago mínimo'),
+        sub: (en ? 'Due in ' : 'Vence en ') + days + (en ? ' days' : ' días')
+      });
+    }
+  });
+  // Budget alerts
+  var today2 = new Date();
+  var curM = today2.getMonth(), curY = today2.getFullYear();
+  (DATA.presupuesto || []).forEach(function(p) {
+    var spent = (DATA.gastos || []).filter(function(g) { return g.month === curM && g.year === curY && g.cat === p.cat; }).reduce(function(a, g) { return a + (g.mon === 'DOP' ? g.monto / DATA.tasa : g.monto); }, 0);
+    var pct = p.lim > 0 ? spent / p.lim : 0;
+    if (pct >= 0.8) {
+      notifications.push({
+        icon: '📊', color: pct >= 1 ? 'var(--red)' : 'var(--gold)',
+        title: p.cat + (en ? ' budget' : ' · Presupuesto'),
+        sub: Math.round(pct * 100) + '% ' + (en ? 'used' : 'usado') + ' · $' + spent.toFixed(0) + ' / $' + p.lim
+      });
+    }
+  });
+  var content = notifications.length > 0
+    ? notifications.map(function(n) {
+        return '<div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)">' +
+          '<div style="width:40px;height:40px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">' + n.icon + '</div>' +
+          '<div style="flex:1"><div style="font-size:14px;font-weight:700;color:var(--t1)">' + n.title + '</div>' +
+          '<div style="font-size:12px;color:' + n.color + ';margin-top:2px;font-weight:600">' + n.sub + '</div></div>' +
+        '</div>';
+      }).join('')
+    : '<div style="text-align:center;padding:32px 0"><div style="font-size:36px;margin-bottom:12px">✅</div><div style="font-size:14px;color:var(--t2)">' + (en ? 'No pending alerts' : 'Sin alertas pendientes') + '</div></div>';
+  return '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button><div class="step-title">🔔 ' + (en ? 'Notifications' : 'Notificaciones') + '</div></div><div style="padding:0 16px 60px">' + content + '</div>';
+})();
 openSheetWith(html);
 }
 function openSheetWith(html) {
@@ -2127,7 +2178,7 @@ var sc = document.getElementById('sheet-content');
 if (sc) sc.innerHTML = _buildWizardStep(2, null);
 }
 function _wgNext2() {
-if (!_selCat) { showToast('Selecciona una categoría'); return; }
+if (!_selCat) { showToast(t('select_category')); return; }
 _wgStep = 3;
 var sc = document.getElementById('sheet-content');
 if (sc) sc.innerHTML = _buildWizardStep(3, null);
@@ -2187,8 +2238,8 @@ if (el2) el2.classList.add('sel');
 function saveGasto() {
 if (!checkClientRateLimit('save_transaction', 50, 60000)) return;
 var monto = _wgMonto > 0 ? _wgMonto : parseFloat(v('gf-monto'));
-if (!monto || monto <= 0) { showToast('Ingresa un monto'); return; }
-if (!_selCat) { showToast('Selecciona una categoría'); return; }
+if (!monto || monto <= 0) { showToast(t('enter_amount')); return; }
+if (!_selCat) { showToast(t('select_category')); return; }
 var fecha = (_wgFecha && _wgStep > 1) ? _wgFecha : (v('gf-fecha') || new Date().toISOString().slice(0,10));
 var desc = (_wgStep > 1) ? _wgDesc : (v('gf-desc') || '');
 var d = dateInfo(fecha);
@@ -2261,7 +2312,7 @@ else { b.style.background='none'; b.style.borderColor='var(--border2)'; b.style.
 function saveIngreso() {
 var monto = parseFloat(v('if-monto'));
 var fuente = v('if-fuente');
-if (!monto || monto <= 0) { showToast('Ingresa un monto'); return; }
+if (!monto || monto <= 0) { showToast(t('enter_amount')); return; }
 if (!fuente) { showToast('Ingresa la fuente del ingreso'); return; }
 var fecha = v('if-fecha') || new Date().toISOString().slice(0,10);
 var d = dateInfo(fecha);
@@ -2274,7 +2325,7 @@ DATA.bancos[idx].bal = (DATA.bancos[idx].bal || 0) + monto;
 }
 }
 save(); closeSheet(); refreshHome(); refreshCuentas();
-showToast('Ingreso guardado ✓');
+showToast(t('income_saved'));
 }
 function buildDeudaSheet() {
 var deudas = (DATA.deudas || []).filter(function(d){ return d.estado !== 'Pagado'; });
@@ -2477,7 +2528,7 @@ if (isNaN(newBal)) { showToast('Ingresa un balance válido'); return; }
 b.bal = newBal;
 }
 save(); closeSheet(); refreshCuentas(); refreshHome();
-showToast('Balance actualizado ✓');
+showToast(t('balance_updated'));
 }
 function deleteBanco(bancoId) {
 var idx = DATA.bancos.findIndex(function(x){ return x.id === bancoId; });
@@ -2564,11 +2615,9 @@ el('tc-saldo-usd-lbl', fmt(saldoUSD, 'USD'));
 el('tc-saldo-dop-lbl', fmt(saldoDOP, 'DOP'));
 }
 function saveBanco() {
-console.log('saveBanco() called - DEBUG');
 var esTarjeta = v('bc-tipo-cuenta') === 'tarjeta';
-var banco = v('bc-banco');
-console.log('esTarjeta:', esTarjeta, 'banco:', banco);
-if (!banco) { showToast('Selecciona un banco'); return; }
+var banco = (v('bc-banco')||'').trim();
+if (!banco) { showToast(t('select_bank')); return; }
 if (esTarjeta) {
 var limUSD = parseFloat(v('tc-lim-usd')) || 0, limDOP = parseFloat(v('tc-lim-dop')) || 0;
 if (!limUSD && !limDOP) { showToast('Ingresa el límite de la tarjeta'); return; }
@@ -2592,10 +2641,11 @@ fecha: v('tc-pago'), estado: 'Activo', esTCDeuda: true, tcId: bancoId
 }
 } else {
 var bal = parseFloat(v('bc-bal')) || 0;
-DATA.bancos.push({ id: Date.now(), banco: banco, tipo: v('bc-subtipo'), mon: v('bc-mon'), bal: bal, pais: v('bc-pais'), ultimos: v('bc-digits'), esTarjeta: false });
+var bancNom = (v('bc-banco')||'').trim();
+DATA.bancos.push({ id: Date.now(), banco: bancNom, nom: bancNom, tipo: v('bc-subtipo'), mon: v('bc-mon'), bal: bal, pais: v('bc-pais'), ultimos: v('bc-digits'), esTarjeta: false });
 }
 save(); closeSheet(); refreshCuentas(); refreshHome();
-showToast('Cuenta guardada ✓');
+showToast(t('account_saved'));
 }
 function ccStatus(tc) {
 if (!tc.pagoFecha) return { cls: 'badge-green', txt: '✅ Activa' };
@@ -3474,7 +3524,7 @@ var pct2 = f.max > 0 ? Math.round(f.pts/f.max*100) : 0;
 if (pct2 < 60) {
 if (f.name === 'Ahorro') tips2.push('🐷 Ahorro (' + f.pts + '/' + f.max + ' pts): guarda al menos el 10% de tus ingresos cada mes');
 if (f.name === 'Control gastos') tips2.push('💸 Control de gastos (' + f.pts + '/' + f.max + ' pts): mantén gastos por debajo del 80% de tus ingresos');
-if (f.name === 'Presupuesto') tips2.push('📊 Presupuesto (' + f.pts + '/' + f.max + ' pts): define límites por categoría y no los superes');
+if (f.name === t('score_budget')) tips2.push('📊 ' + t('score_budget') + ' (' + f.pts + '/' + f.max + ' pts): define límites por categoría y no los superes');
 if (f.name === 'Crecimiento') tips2.push('📈 Crecimiento (' + f.pts + '/' + f.max + ' pts): registra al menos 5 movimientos por mes');
 }
 });
@@ -3664,7 +3714,71 @@ return '<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid
 '</div>';
 }).join('') + '</div>';
 }
-function showNotifs() { showToast('Sin notificaciones nuevas'); }
+function showNotifs() {
+  var en = DATA.lang === 'en';
+  var notifs = [];
+  var now = new Date();
+  
+  // Check upcoming fixed expenses
+  (DATA.gastosFijos || []).forEach(function(gf) {
+    var dia = parseInt(gf.dia) || 1;
+    var today = now.getDate();
+    var diff = dia - today;
+    if (diff >= 0 && diff <= 5) {
+      notifs.push({
+        icon: '🔔',
+        title: en ? 'Upcoming payment' : 'Pago próximo',
+        msg: (gf.desc || gf.cat) + ' — ' + fmt(gf.monto, gf.mon),
+        type: diff <= 2 ? 'urgent' : 'warn'
+      });
+    }
+  });
+  
+  // Check budget alerts
+  var cur = DATA.curMonth, curY = DATA.curYear;
+  (DATA.presupuesto || []).forEach(function(p) {
+    var spent = (DATA.gastos || [])
+      .filter(function(g) { return g.month===cur && g.year===curY && g.cat===p.cat; })
+      .reduce(function(a,g) { return a + toUSD(g.monto, g.mon); }, 0);
+    var lim = toUSD(p.lim, p.mon);
+    var pct = lim > 0 ? Math.round(spent/lim*100) : 0;
+    if (pct >= 80) {
+      notifs.push({
+        icon: '⚠️',
+        title: en ? 'Budget alert' : 'Alerta de presupuesto',
+        msg: (p.cat || 'Categoría') + ' — ' + pct + '% ' + (en ? 'used' : 'utilizado'),
+        type: pct >= 100 ? 'urgent' : 'warn'
+      });
+    }
+  });
+
+  if (notifs.length === 0) {
+    openSheetWith(
+      '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button>' +
+      '<div class="step-title">🔔 ' + (en ? 'Notifications' : 'Notificaciones') + '</div></div>' +
+      '<div style="text-align:center;padding:40px 20px">' +
+      '<div style="font-size:48px;margin-bottom:16px">✅</div>' +
+      '<div style="font-size:16px;font-weight:700;color:var(--t1);margin-bottom:8px">' + (en ? 'All clear!' : '¡Todo bien!') + '</div>' +
+      '<div style="font-size:13px;color:var(--t2)">' + (en ? 'No pending notifications' : 'Sin notificaciones pendientes') + '</div>' +
+      '</div>'
+    );
+    return;
+  }
+
+  var html = '<div class="step-header"><button class="step-back" onclick="closeSheet()">←</button>' +
+    '<div class="step-title">🔔 ' + (en ? 'Notifications' : 'Notificaciones') + ' (' + notifs.length + ')</div></div>' +
+    '<div style="padding:0 16px 40px">';
+  notifs.forEach(function(n) {
+    var color = n.type === 'urgent' ? 'var(--red)' : 'var(--gold)';
+    html += '<div style="display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--border);align-items:flex-start">' +
+      '<div style="font-size:24px">' + n.icon + '</div>' +
+      '<div><div style="font-size:14px;font-weight:700;color:var(--t1)">' + n.title + '</div>' +
+      '<div style="font-size:13px;color:var(--t2);margin-top:2px">' + n.msg + '</div></div>' +
+      '</div>';
+  });
+  html += '</div>';
+  openSheetWith(html);
+}
 function showTourOnDemand() { openSheet('tour'); }
 async function buildAdminPanel() {
 var el2 = document.getElementById('admin-content');
@@ -3873,6 +3987,20 @@ var T = {
     can_spend: 'You can spend until today without exceeding your budget:',
     upcoming_title: 'UPCOMING PAYMENTS', achievements_title: 'ACHIEVEMENTS', next_achievements: 'UPCOMING',
     score_title: 'FINANCIAL SCORE',
+    saved: 'Saved ✓', expense_saved: 'Expense saved ✓', income_saved: 'Income saved ✓',
+    account_saved: 'Account saved ✓', account_deleted: 'Account deleted',
+    updated: 'Updated ✓', error: 'Error', loading: 'Loading...',
+    select_bank: 'Select a bank', select_category: 'Select a category',
+    enter_amount: 'Enter an amount', balance_updated: 'Balance updated ✓',
+    debt_paid: 'Payment registered ✓', goal_saved: 'Goal saved ✓',
+    backup_downloaded: 'Backup downloaded ✓', backup_saved: 'Backup saved in cloud ✓',
+    sign_in_first: 'Sign in first', rate_updated: 'Rate updated ✓',
+    fixed_applied: 'Fixed expenses applied ✓', pin_set: 'PIN configured ✓',
+    pin_wrong: 'Wrong PIN', copied: 'Copied ✓',
+    theme_updated: 'Theme updated', lang_es: 'Spanish selected 🇩🇴', lang_en: 'English selected 🇺🇸',
+    session_closed: 'Session closed', welcome: 'Welcome to GestorRD!',
+    too_many_actions: 'Too many actions. Wait a moment.',
+    available_until: 'You can spend until today without exceeding your budget:',
   }
 };
 
@@ -3951,7 +4079,7 @@ function applyLang(l) {
   var legends = document.querySelectorAll('.legend-name');
   var legMap = en
     ? ['Available','Expenses','Savings']
-    : ['Disponible','Gastos','Ahorros'];
+    : [t('available_lbl'), t('expenses_lbl'), t('savings_lbl')];
   legends.forEach(function(el2, i) { if (legMap[i]) el2.textContent = legMap[i]; });
 
   // ── Donut center label ───────────────────────────────
@@ -4025,7 +4153,7 @@ localStorage.setItem('grd3_pin', hashed);
 });
 _pinSetupStep = 0; _pinSetupTmp = ''; _pinBuf = '';
 hide('pin-screen');
-showToast('PIN configurado ✓');
+showToast(t('pin_set'));
 openSheet('pin-settings');
 } else {
 el('perr','Los PIN no coinciden, intenta de nuevo');
@@ -4243,7 +4371,7 @@ if (!currentUser || !sb) return;
 try {
 var r = await sb.from('app_backups').upsert({ user_id: currentUser.id, email: currentUser.email, data: { version: '2.0', fecha: new Date().toISOString(), datos: DATA }, records_count: recordCount(), device: navigator.platform || navigator.userAgent, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
 if (r.error) { if (show) showToast('Error respaldo nube: ' + r.error.message); }
-else { if (show) showToast('Respaldo guardado en la nube ✓'); }
+else { if (show) showToast(t('backup_saved')); }
 } catch(e) { if (show) showToast('Error al guardar respaldo'); }
 }
 async function restoreCloudBackup() {
@@ -4390,7 +4518,7 @@ function checkClientRateLimit(action, maxCount, windowMs) {
   _rateLimits[action] = _rateLimits[action].filter(function(t) { return now - t < window; });
 
   if (_rateLimits[action].length >= max) {
-    showToast('Demasiadas acciones. Espera un momento.');
+    showToast(t('too_many_actions'));
     return false;
   }
 
@@ -4516,8 +4644,24 @@ async function fetchLiveRate() {
 }
 function setTheme(t) {
 localStorage.setItem('grd3_theme', t);
-if (t === 'dark') document.documentElement.setAttribute('data-theme','dark');
-else if (t === 'light') document.documentElement.setAttribute('data-theme','light');
+if (typeof DATA !== 'undefined') DATA.tema = t;
+if (t === 'dark') {
+  document.documentElement.setAttribute('data-theme','dark');
+} else if (t === 'light') {
+  document.documentElement.setAttribute('data-theme','light');
+} else {
+  var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+}
+['auto','dark','light'].forEach(function(th) {
+  var btn = document.getElementById('t-' + th);
+  if (!btn) return;
+  btn.style.background = (th === t) ? 'var(--gold-dim)' : 'none';
+  btn.style.borderColor = (th === t) ? 'var(--gold)' : 'var(--border2)';
+  btn.style.color = (th === t) ? 'var(--gold)' : 'var(--t2)';
+  btn.style.fontWeight = (th === t) ? '700' : '400';
+});
+if (typeof save === 'function') save();
 else document.documentElement.removeAttribute('data-theme');
 ['auto','dark','light'].forEach(function(x) {
 var b = document.getElementById('t-'+x);
@@ -4532,7 +4676,7 @@ var blob = new Blob([JSON.stringify(DATA, null, 2)], {type:'application/json'});
 var a = document.createElement('a');
 a.href = URL.createObjectURL(blob);
 a.download = 'gestorrd-backup-' + new Date().toISOString().slice(0,10) + '.json';
-a.click(); showToast('Respaldo descargado ✓');
+a.click(); showToast(t('backup_downloaded'));
 }
 function doRestore() { document.getElementById('restore-file').click(); }
 function loadRestoreFile(e) {
@@ -4544,7 +4688,7 @@ catch(err) { showToast('Error al restaurar'); }
 };
 r.readAsText(f);
 }
-(function boot() {
+function boot() {
 var th = localStorage.getItem('grd3_theme') || 'auto';
 if (th === 'dark') document.documentElement.setAttribute('data-theme','dark');
 else if (th === 'light') document.documentElement.setAttribute('data-theme','light');
@@ -4582,7 +4726,8 @@ if (ao) ao.style.display = 'flex';
 }
 }
 }
-})();
+}
+document.addEventListener('DOMContentLoaded', boot);
 // Safe initialization
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', function() {
@@ -4639,8 +4784,16 @@ function exportByDates() {
 }
 
 function generateInviteLink() {
-  var link = 'gestorrd://invite/' + Math.random().toString(36).substr(2, 9);
-  showToast('Enlace copiado');
+  var link = 'https://gestorrd.com?ref=' + Math.random().toString(36).substr(2, 9);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(link).then(function() {
+      showToast('✅ Enlace copiado: ' + link);
+    }).catch(function() {
+      prompt('Copia este enlace:', link);
+    });
+  } else {
+    prompt('Copia este enlace:', link);
+  }
 }
 
 function generateSharedLink() {
@@ -4720,8 +4873,16 @@ function purchaseSubscription(type) {
 }
 
 function generateInviteLink() {
-  var link = 'https://gestorrd.app/invite/' + Math.random().toString(36).substring(7);
-  showToast('Enlace copiado: ' + link);
+  var link = 'https://apps.apple.com/app/id6791263189';
+  if (navigator.share) {
+    navigator.share({ title: 'GestorRD', text: 'Controla tus finanzas con GestorRD', url: link });
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(link).then(function() {
+      showToast('Enlace copiado ✓');
+    });
+  } else {
+    showToast('Link: ' + link);
+  }
 }
 
 function checkSubscription() {
@@ -4814,28 +4975,6 @@ function exportByDates() {
   showToast('Datos exportados');
 }
 
-function setTheme(theme) {
-  var root = document.documentElement;
-  if (theme === 'dark') {
-    root.style.colorScheme = 'dark';
-    document.body.classList.add('dark-mode');
-  } else if (theme === 'light') {
-    root.style.colorScheme = 'light';
-    document.body.classList.remove('dark-mode');
-  } else {
-    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (prefersDark) {
-      root.style.colorScheme = 'dark';
-      document.body.classList.add('dark-mode');
-    } else {
-      root.style.colorScheme = 'light';
-      document.body.classList.remove('dark-mode');
-    }
-  }
-  localStorage.setItem('grd3_theme', theme);
-  showToast('Tema actualizado');
-}
-
 function rateApp(stars) {
   localStorage.setItem('grd3_app_rating', stars);
   for (var i = 1; i <= 5; i++) {
@@ -4849,30 +4988,63 @@ function rateApp(stars) {
 
 function enableFaceID(button) {
   if (!button) return;
-  button.classList.toggle('on');
-  var isEnabled = button.classList.contains('on');
-
-  if (isEnabled) {
-    // Attempt to use WebAuthn for Face ID (Safari on iOS)
+  var willEnable = !button.classList.contains('on');
+  if (willEnable) {
+    // Check if biometrics available
     if (window.PublicKeyCredential && window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
       window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(function(available) {
         if (available) {
+          button.classList.add('on');
           localStorage.setItem('grd3_faceid_enabled', 'true');
+          DATA.faceId = true; save();
           showToast('Face ID habilitado ✓');
         } else {
-          button.classList.remove('on');
           showToast('Face ID no disponible en este dispositivo');
         }
       });
-    } else {
-      // Fallback for non-WebAuthn browsers
+    } else if (window.webkit && window.webkit.messageHandlers) {
+      // iOS native - always available on iPhone with Face ID
+      button.classList.add('on');
       localStorage.setItem('grd3_faceid_enabled', 'true');
+      DATA.faceId = true; save();
+      showToast('Face ID habilitado ✓');
+    } else {
+      button.classList.add('on');
+      localStorage.setItem('grd3_faceid_enabled', 'true');
+      DATA.faceId = true; save();
       showToast('Face ID habilitado ✓');
     }
   } else {
+    button.classList.remove('on');
     localStorage.removeItem('grd3_faceid_enabled');
+    DATA.faceId = false; save();
     showToast('Face ID deshabilitado');
   }
 }
+
+// Face ID authentication - called when app opens
+async function authenticateWithFaceID() {
+  if (!localStorage.getItem('grd3_faceid_enabled')) return true; // not enabled, allow
+  try {
+    if (window.PublicKeyCredential && window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+      var available = await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      if (available) {
+        // Use platform authenticator (Face ID / Touch ID)
+        var credential = await navigator.credentials.get({
+          publicKey: {
+            challenge: new Uint8Array(32),
+            rpId: 'gestorrd.com',
+            userVerification: 'required',
+            timeout: 30000
+          }
+        });
+        return !!credential;
+      }
+    }
+    return true; // fallback allow
+  } catch(e) {
+    return false; // authentication failed or cancelled
+  }
+}
 </script>
-</div></body></html>
+</div></div></body></html>
