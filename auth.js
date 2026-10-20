@@ -140,75 +140,38 @@ async function authSubmit() {
 var email = (v('auth-email')||'').trim();
 var pass = (v('auth-pass')||'').trim();
 if (!email || pass.length < 6) { authMsg('Escribe un email válido y una contraseña de mínimo 6 caracteres.'); return; }
-
 authMsg('Iniciando sesión...');
-
-// Sistema de autenticación LOCAL (sin servidor)
+if (!sb) { authMsg('Sin conexión. Intenta de nuevo.'); return; }
 if (authMode === 'register') {
-  var nombre = (v('auth-nombre')||'').trim();
-  var apellido = (v('auth-apellido')||'').trim();
-
-  // Verificar si el email ya existe
-  var existingAccounts = JSON.parse(localStorage.getItem('grd3_accounts') || '{}');
-  if (existingAccounts[email]) {
-    authMsg('❌ Este email ya tiene una cuenta registrada.');
-    return;
-  }
-
-  // Crear cuenta nueva (guardar en localStorage)
-  var pw = await hashPassword(pass);
-  existingAccounts[email] = {
-    email: email,
-    salt: pw.salt,
-    hash: pw.hash,
-    algo: 'pbkdf2-sha256',
-    iter: PWD_ITER,
-    nombre: nombre,
-    apellido: apellido,
-    created_at: new Date().toISOString()
-  };
-  localStorage.setItem('grd3_accounts', JSON.stringify(existingAccounts));
-  localStorage.setItem('grd3_auth', email);
-
-  DATA.userName = [nombre, apellido].filter(Boolean).join(' ');
-  DATA.nombre = nombre;
-  DATA.apellido = apellido;
-  DATA.email = email;
-  currentUser = { email: email, id: email };
-  isGuestMode = false;
-
-  authMsg('✅ Cuenta creada correctamente!');
-  setTimeout(function() {
-    hide('auth-overlay');
-    launchApp();
-    showToast('Bienvenido a GestorRD ' + nombre);
-  }, 1000);
-} else {
-  // Login - verificar credenciales locales
-  var accounts = JSON.parse(localStorage.getItem('grd3_accounts') || '{}');
-  var account = accounts[email];
-
-  if (!(await verifyPassword(account, pass))) {
-    authMsg('❌ Email o contraseña incorrectos');
-    return;
-  }
-  localStorage.setItem('grd3_accounts', JSON.stringify(accounts));
-  localStorage.setItem('grd3_auth', email);
-  DATA.userName = [account.nombre, account.apellido].filter(Boolean).join(' ');
-  DATA.nombre = account.nombre;
-  DATA.apellido = account.apellido;
-  DATA.email = email;
-  currentUser = { email: email, id: email };
-  isGuestMode = false;
-
-  authMsg('✅ Sesión iniciada!');
-  setTimeout(function() {
-    hide('auth-overlay');
-    launchApp();
-    showToast('¡Bienvenido de vuelta ' + account.nombre + '!');
-  }, 1000);
+var nombre = (v('auth-nombre')||'').trim();
+var apellido = (v('auth-apellido')||'').trim();
+var r = await sb.auth.signUp({ email: email, password: pass, options: { data: { nombre: nombre, apellido: apellido }, emailRedirectTo: window.location.origin } });
+if (r.error) { authMsg('❌ ' + r.error.message); return; }
+if (!r.data.session) { authMsg('✅ Te enviamos un correo para confirmar tu cuenta. Confírmala y luego inicia sesión.'); return; }
+finishLogin(r.data.user, nombre, apellido);
+return;
 }
+var lg = await sb.auth.signInWithPassword({ email: email, password: pass });
+if (lg.error) { authMsg(lg.error.message === 'Invalid login credentials' ? '❌ Email o contraseña incorrectos' : '❌ ' + lg.error.message); return; }
+var md = lg.data.user.user_metadata || {};
+finishLogin(lg.data.user, md.nombre || '', md.apellido || '');
 }
+// Deja la sesión lista en la app después de entrar o crear cuenta
+function finishLogin(user, nombre, apellido) {
+currentUser = user; isGuestMode = false;
+localStorage.setItem('grd3_auth', 'user');
+DATA.nombre = nombre || ''; DATA.apellido = apellido || '';
+DATA.userName = [nombre, apellido].filter(Boolean).join(' ');
+DATA.email = user.email;
+save();
+authMsg('✅ Sesión iniciada!');
+setTimeout(function() {
+hide('auth-overlay');
+launchApp();
+showToast('¡Bienvenido ' + (nombre || '') + '!');
+}, 800);
+}
+
 function authGuest() {
 currentUser = null; isGuestMode = true;
 DATA.userName = ''; DATA.bancos = []; DATA.ingresos = []; DATA.gastos = [];
@@ -223,23 +186,22 @@ function resetPassword() {
 var email = (v('auth-email')||'').trim();
 if (!email) { authMsg('Escribe tu email primero.'); return; }
 if (!sb) { authMsg('Sin conexión.'); return; }
-sb.auth.signInWithOtp({ email: email, options: { emailRedirectTo: window.location.origin, shouldCreateUser: false } })
-.then(function(r) {
+sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin }).then(function(r) {
 if (r.error) authMsg('❌ ' + r.error.message);
-else authMsg('✅ Link enviado a ' + email + '. Tócalo para entrar.');
+else authMsg('✅ Te enviamos un correo para cambiar tu contraseña. Ábrelo desde este dispositivo.');
 }).catch(function(e) { authMsg('❌ ' + (e.message || 'Error')); });
 }
+
 
 function logout() {
 logoutAccount();
 }
 function logoutAccount() {
+if (sb) { try { sb.auth.signOut(); } catch(e) {} }
 currentUser = null; isGuestMode = false;
 localStorage.removeItem('grd3_auth');
-// Clear sensitive data from view
 DATA.ingresos = []; DATA.gastos = []; DATA.bancos = [];
 DATA.deudas = []; DATA.metas = []; DATA.userName = '';
-// Go back to landing screen
 var app = document.getElementById('app');
 var landing = document.getElementById('landing');
 if (app) app.style.display = 'none';
@@ -247,6 +209,7 @@ if (landing) { landing.style.display = 'flex'; }
 else { location.reload(); }
 showToast(t('session_closed'));
 }
+
 function deleteAccount() {
 if (!currentUser) { showToast('Inicia sesión primero'); return; }
 openSheetWith(
