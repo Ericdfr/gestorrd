@@ -1,7 +1,7 @@
 // GestorRD Service Worker v2.0
 // Cache offline + performance
 
-const CACHE_NAME = 'gestorrd-v2.0';
+const CACHE_NAME = 'gestorrd-v2.1';
 const ASSETS = [
   '/',
   '/accounts.js',
