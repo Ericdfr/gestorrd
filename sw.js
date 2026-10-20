@@ -1,10 +1,40 @@
-// GestorRD Service Worker v1.0
+// GestorRD Service Worker v2.0
 // Cache offline + performance
 
-const CACHE_NAME = 'gestorrd-v1.0';
+const CACHE_NAME = 'gestorrd-v2.0';
 const ASSETS = [
   '/',
-  '/index.html'
+  '/accounts.js',
+  '/admin.js',
+  '/ai.js',
+  '/app.js',
+  '/auth.js',
+  '/calc.js',
+  '/config.js',
+  '/desktop.js',
+  '/history.js',
+  '/home.js',
+  '/i18n.js',
+  '/import.js',
+  '/index.html',
+  '/infra.js',
+  '/launch.js',
+  '/legal.js',
+  '/menus.js',
+  '/notifs.js',
+  '/onboarding.js',
+  '/premium.js',
+  '/profile.js',
+  '/reports.js',
+  '/search.js',
+  '/settings.js',
+  '/sheet-core.js',
+  '/sheets.js',
+  '/store.js',
+  '/styles.css',
+  '/sync.js',
+  '/tour.js',
+  '/ui.js'
 ];
 
 // Install - cache assets
