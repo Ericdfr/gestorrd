@@ -18,15 +18,18 @@ async function restoreCloudBackup() {
 // Sistema local - no hay respaldo en la nube
 }
 async function initSupabaseAuth() {
-// Sistema local - no hay Supabase
-// Cargar sesión desde localStorage si existe
-var auth = localStorage.getItem('grd3_auth');
-if (auth && auth !== 'guest') {
-var accounts = JSON.parse(localStorage.getItem('grd3_accounts') || '{}');
-var account = accounts[auth];
-if (account) {
-currentUser = { email: auth, id: auth };
-isGuestMode = false;
+if (!sb) return;
+try {
+var r = await sb.auth.getSession();
+var session = r.data && r.data.session;
+if (session) { currentUser = session.user; isGuestMode = false; localStorage.setItem('grd3_auth', 'user'); }
+} catch(e) {}
+sb.auth.onAuthStateChange(function(event, session) {
+if (event === 'PASSWORD_RECOVERY' && session) {
+currentUser = session.user; isGuestMode = false;
+localStorage.setItem('grd3_auth', 'user');
+launchApp();
+setTimeout(function() { openSheetWith(buildCambiarPwdSheet()); }, 500);
 }
-}
+});
 }
