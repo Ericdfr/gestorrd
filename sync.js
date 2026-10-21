@@ -19,17 +19,26 @@ async function restoreCloudBackup() {
 }
 async function initSupabaseAuth() {
 if (!sb) return;
-try {
-var r = await sb.auth.getSession();
-var session = r.data && r.data.session;
-if (session) { currentUser = session.user; isGuestMode = false; localStorage.setItem('grd3_auth', 'user'); }
-} catch(e) {}
-sb.auth.onAuthStateChange(function(event, session) {
-if (event === 'PASSWORD_RECOVERY' && session) {
+// El enlace del correo de recuperación trae type=recovery en la dirección; se lee antes de que Supabase la limpie.
+var recovering = /type=recovery/.test(window.location.hash || '');
+var shownRecovery = false;
+function openRecovery(session) {
+if (shownRecovery || !session) return;
+shownRecovery = true;
 currentUser = session.user; isGuestMode = false;
 localStorage.setItem('grd3_auth', 'user');
 launchApp();
 setTimeout(function() { openSheetWith(buildCambiarPwdSheet()); }, 500);
 }
+// Suscripción antes de cualquier await para no perder el evento de recuperación.
+sb.auth.onAuthStateChange(function(event, session) {
+if (event === 'PASSWORD_RECOVERY') openRecovery(session);
+else if (recovering && event === 'SIGNED_IN') openRecovery(session);
 });
+try {
+var r = await sb.auth.getSession();
+var session = r.data && r.data.session;
+if (session && !recovering) { currentUser = session.user; isGuestMode = false; localStorage.setItem('grd3_auth', 'user'); }
+if (session && recovering) openRecovery(session);
+} catch(e) {}
 }
