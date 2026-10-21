@@ -1,7 +1,7 @@
 // GestorRD Service Worker v2.0
 // Cache offline + performance
 
-const CACHE_NAME = 'gestorrd-v2.1';
+const CACHE_NAME = 'gestorrd-v2.2';
 const ASSETS = [
   '/',
   '/accounts.js',
@@ -41,7 +41,7 @@ const ASSETS = [
 self.addEventListener('install', function(e) {
   e.waitUntil(
     caches.open(CACHE_NAME).then(function(cache) {
-      return cache.addAll(ASSETS);
+      return cache.addAll(ASSETS.map(function(u){ return new Request(u, { cache: 'reload' }); }));
     })
   );
   self.skipWaiting();
